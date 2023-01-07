@@ -1,0 +1,5 @@
+1. chain_20221231_1834_burn400_iter400
+   Prima run di prova, parametri fissati in output/rjsampler.asciipb
+
+2. chain_20230106_1749_burn600_iter1000
+   Seconda run, parametri uguali alla prima ma il doppio delle iterazioni
