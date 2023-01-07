@@ -46,13 +46,13 @@ FDR_analysis <- function(PL, tol = seq(0.1, 1, by = 0.05), min_rate = 0.05) {
 }
 sf_ggmap <- function(map) {
   if (!inherits(map, "ggmap")) stop("map must be a ggmap object")
+  
   # Extract the bounding box (in lat/lon) from the ggmap to a numeric vector, 
   # and set the names to what sf::st_bbox expects:
   map_bbox <- setNames(unlist(attr(map, "bb")), 
                        c("ymin", "xmin", "ymax", "xmax"))
   
-  # Coonvert the bbox to an sf polygon, transform it to 3857, 
-  # and convert back to a bbox (convoluted, but it works)
+  # Coonvert the bbox to an sf polygon, transform it to 3857, and convert back to a bbox
   bbox_3857 <- st_bbox(st_transform(st_as_sfc(st_bbox(map_bbox, crs = 4326)), 3857))
   
   # Overwrite the bbox of the ggmap object with the transformed coordinates 
@@ -60,6 +60,8 @@ sf_ggmap <- function(map) {
   attr(map, "bb")$ll.lon <- bbox_3857["xmin"]
   attr(map, "bb")$ur.lat <- bbox_3857["ymax"]
   attr(map, "bb")$ur.lon <- bbox_3857["xmax"]
+  
+  # Return
   return(map)
 }
 boundary_geometry <- function(boundary_list, sf_geometry) {
@@ -86,7 +88,7 @@ boundary_geometry <- function(boundary_list, sf_geometry) {
 }
 
 # Import usa shapefile
-sf_usa <- read_sf("shapefiles/us-pumas_boundaries/ipums_puma_2010.shp")
+sf_usa <- read_sf("shp/us-pumas/us-pumas.shp")
 sf_usa$id <- row.names(sf_usa)
 sf_usa$PUMA <- as.character(as.numeric(sf_usa$PUMA))
 
@@ -118,18 +120,21 @@ W <- nb2mat(adj_list, style = "B")
 # Sampler run -------------------------------------------------------------
 
 # Setting MCMC parameters
-burnin = 400
-niter = 400
-thin = 1
+burnin = 1000
+niter = 1000
+thin = 2
 
 # Grab input filenames
-params_filename = "input/rjsampler_params.asciipb"
+params_filename = "input/rjsampler_params_2.asciipb"
 
 # Run Spatial sampler
 out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params_filename)
 
 # Save output
-save(out, file = "output/chain_20221231_1834_burn400_iter400.dat")
+if (exists("out")) {
+  filename <- sprintf("chain_%s_burn%d_iter%d.dat", format(Sys.time(), "%Y%m%d_%H%M"), burnin, niter)
+  save(out, file = filename)
+}
 
 ###########################################################################
 
@@ -137,7 +142,7 @@ save(out, file = "output/chain_20221231_1834_burn400_iter400.dat")
 # Posterior Analysis ------------------------------------------------------
 
 # Load output
-load("output/chain_20221231_1834_burn400_iter400.dat")
+load("output/chain_20230106_1749_burn600_iter1000.dat")
 
 # Deserialization
 chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
@@ -169,7 +174,7 @@ G_med <- ifelse(plinks > 0.5, 1, 0)
 
 # Compute boundary matrix, boundary adj list and geometry
 bound_matrix <- W - G_med
-bound_list <- spdep::mat2listw(bound_matrix)$neighbours
+bound_list <- mat2listw(bound_matrix)$neighbours
 bound_sf <- boundary_geometry(bound_list, sf_counties)
 
 ###########################################################################
@@ -196,7 +201,7 @@ x11(height = 4, width = 4); plot_postH
 # PLOT - Empirical vs. Estimated density ----------------------------------
 
 # Make auxiliary dataframes
-area <- 1
+area <- 60
 df_hist <- data.frame("Data" = data[[area]])
 df_dens <- data.frame("x" = seq(data_ranges[1,area], data_ranges[2,area], length.out = Npoints),
                       t(estimated_densities[[area]]))
@@ -240,11 +245,11 @@ x11(width = 4, height = 4); plot_plinks
 counties_bbox <- unname(st_bbox(st_transform(sf_counties, 4326)))
 counties_map <- sf_ggmap(get_map(counties_bbox, source = "stamen", crop = FALSE))
 # CRS conversions (for plotting)
-sf_counties_3857 <- st_transform(sf_counties, 3857)
+sf_counties_3857 <- st_transform(sf_counties, 3857) #4326
 bound_sf_3857 <- st_transform(bound_sf, 3857)
 # Generate plot
 plt_boundaries_mean <- ggmap(counties_map) +
-  geom_sf(data = sf_counties_3857, aes(fill=post_mean), col='gray25', alpha = 0.6, inherit.aes = FALSE) +
+  geom_sf(data = sf_counties_3857, aes(fill=post_mean), col='gray25', alpha = 0.6, inherit.aes = F) +
   scale_fill_gradient(low = 'steelblue', high = 'darkorange') +
   geom_sf(data = bound_sf, col='darkred', lwd=0.8, inherit.aes = FALSE) +
   theme_void() + theme(legend.position = "bottom") +
@@ -265,10 +270,10 @@ x11(height = 7, width = 14); gridExtra::grid.arrange(grobs = list(plt_boundaries
 
 # Quick comparison
 x11(); par(mfrow=c(1,2))
-area <- 12
+area <- 4
 hist(data[[area]], probability = T, ylim = c(0,0.5))
 lines(seq(data_ranges[1,area], data_ranges[2,area], length.out = Npoints), estimated_densities[[area]]["est",], col='blue', lwd=2)
-area <- 15
+area <- 11
 hist(data[[area]], probability = T, ylim = c(0,0.5))
 lines(seq(data_ranges[1,area], data_ranges[2,area], length.out = Npoints), estimated_densities[[area]]["est",], col='blue', lwd=2)
 
