@@ -1,1 +1,5 @@
-output/
+# Ignored files
+.Rhistory
+
+# Ignored folders
+# output/
