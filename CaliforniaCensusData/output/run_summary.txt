@@ -3,3 +3,6 @@
 
 2. chain_20230106_1749_burn600_iter1000
    Seconda run, parametri uguali alla prima ma il doppio delle iterazioni
+   
+3. chain_20230108_1254_burn1000_iter1000.dat
+   Terza run, con i parametri fissati in output/rjsampler2.asciipb
