@@ -132,7 +132,7 @@ out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params_filename)
 
 # Save output
 if (exists("out")) {
-  filename <- sprintf("chain_%s_burn%d_iter%d.dat", format(Sys.time(), "%Y%m%d_%H%M"), burnin, niter)
+  filename <- sprintf("output/chain_%s_burn%d_iter%d.dat", format(Sys.time(), "%Y%m%d_%H%M"), burnin, niter)
   save(out, file = filename)
 }
 
