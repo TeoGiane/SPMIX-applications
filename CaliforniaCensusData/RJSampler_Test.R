@@ -142,7 +142,7 @@ if (exists("out")) {
 # Posterior Analysis ------------------------------------------------------
 
 # Load output
-load("output/chain_20230106_1749_burn600_iter1000.dat")
+load("output/chain_20230108_1254_burn1000_iter1000.dat")
 
 # Deserialization
 chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
