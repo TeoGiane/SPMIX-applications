@@ -2,48 +2,10 @@
 library("ggplot2")
 library("ggmap")
 library("sf")
-library("spdep")
 library("dplyr")
 library("SPMIX")
 
 # Functions
-FDR_analysis <- function(PL, tol = seq(0.1, 1, by = 0.05), min_rate = 0.05) {
-  PL_vet = PL[upper.tri(PL, diag = F)]
-  if(any(tol > max(PL)))
-    tol <- tol[-which(tol > max(PL))]
-  if(is.null(tol))
-    stop("No feasible tolerances")
-
-  FDR = rep(0,length(tol))
-
-  for (i in 1:length(tol)) {
-    tolerance <- tol[i]
-    sopra_soglia = PL_vet[PL_vet >= tolerance]
-    FDR[i] = sum( 1 - sopra_soglia )/length(sopra_soglia)
-  }
-
-  if(FDR[1] < min_rate){
-    best_soglia_fdr = tol[1]
-  }else
-    for(i in 2:length(FDR)){
-      if(FDR[i] < min_rate)
-        break()
-    }
-
-  best_soglia_fdr = tol[i]
-  FDR[i]
-  best_soglia_fdr
-  best_graph_fdr = matrix(0, nrow(PL), ncol(PL))
-  best_graph_fdr[PL >= best_soglia_fdr]   = 1
-  best_graph_fdr <- best_graph_fdr + t(best_graph_fdr)
-
-  result = list()
-  result[[1]] = best_soglia_fdr
-  result[[2]] = best_graph_fdr
-  names(result) = c('best_treshold', 'best_truncated_graph')
-  return(result)
-
-}
 sf_ggmap <- function(map) {
   if (!inherits(map, "ggmap")) stop("map must be a ggmap object")
   
@@ -65,8 +27,10 @@ sf_ggmap <- function(map) {
   return(map)
 }
 boundary_geometry <- function(boundary_list, sf_geometry) {
-  
   if(!inherits(sf_geometry, "sf")) { stop("'sf_geometry' must be an sf object") }
+  if(!("id" %in% names(sf_geometry))){
+    sf_geometry$id <- 1:nrow(sf_geometry)
+  }
   
   # Create empty list
   geom_bdd <- list()
@@ -76,15 +40,23 @@ boundary_geometry <- function(boundary_list, sf_geometry) {
     sel_geom <- sf_geometry[c(i, boundary_list[[i]]), ]
     
     # Compute geometry of boundary
-    geometry <- suppressWarnings(st_intersection(sel_geom, sel_geom))
-    geometry <- st_geometry(geometry[geometry$id != geometry$id.1, ])
+    bounds <- suppressWarnings(st_intersection(sel_geom, sel_geom))
+    bounds <- st_geometry(bounds[bounds$id != bounds$id.1, ])
     
     # Add to list
-    geom_bdd[[i]] <- st_sf(geometry)
+    geom_bdd[[i]] <- st_sf(geometry = bounds)
+  }
+  
+  geom_bdd <- do.call(rbind, geom_bdd)
+  
+  # Drop points if present
+  points <- which(attr(geom_bdd$geometry, "classes") == "POINT")
+  if(length(points) > 0){
+    geom_bdd <- geom_bdd[-points, ]
   }
   
   # Condense everything into a unique sf object and return
-  return(do.call(rbind, geom_bdd))
+  return(geom_bdd)
 }
 
 # Import usa shapefile
@@ -112,20 +84,20 @@ for (i in 1:length(pumas)) {
 }
 
 # Compute adjacency matrix
-adj_list <- poly2nb(sf_counties, row.names = pumas, queen = FALSE)
-W <- nb2mat(adj_list, style = "B")
+adj_list <- spdep::poly2nb(sf_counties, row.names = pumas, queen = FALSE)
+W <- spdep::nb2mat(adj_list, style = "B")
 
 
 ###########################################################################
 # Sampler run -------------------------------------------------------------
 
 # Setting MCMC parameters
-burnin = 1000
-niter = 1000
-thin = 2
+burnin = 5000
+niter = 5000
+thin = 1
 
 # Grab input filenames
-params_filename = "input/rjsampler_params_2.asciipb"
+params_filename = "input/rjsampler_params.asciipb"
 
 # Run Spatial sampler
 out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params_filename)
@@ -142,7 +114,7 @@ if (exists("out")) {
 # Posterior Analysis ------------------------------------------------------
 
 # Load output
-load("output/chain_20230108_1254_burn1000_iter1000.dat")
+load("output/chain_20230120_0932_burn5000_iter5000.dat")
 
 # Deserialization
 chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
@@ -170,11 +142,11 @@ estimated_densities <- ComputeDensities(chains, Npoints, data_ranges, alpha = 0.
 
 # Compute plinks and median graph estimate
 plinks <- Reduce('+', G_chain)/length(G_chain)
-G_med <- ifelse(plinks > 0.5, 1, 0)
+G_est <- ifelse(plinks > 0.5, 1, 0)
 
 # Compute boundary matrix, boundary adj list and geometry
-bound_matrix <- W - G_med
-bound_list <- mat2listw(bound_matrix)$neighbours
+bound_matrix <- W - G_est
+bound_list <- spdep::mat2listw(bound_matrix)$neighbours
 bound_sf <- boundary_geometry(bound_list, sf_counties)
 
 ###########################################################################
@@ -189,11 +161,8 @@ plot_postH <- ggplot(data = df, aes(x=NumComponents, y=Prob.)) +
   geom_bar(stat="identity", color="steelblue", fill="lightblue") +
   theme(plot.title = element_text(face="bold", hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) +
   xlab("N° of Components")
-# Clean auxiliary dataframe
-rm(list='df')
-
-# Show
-x11(height = 4, width = 4); plot_postH
+# Show plot
+plot_postH
 
 ###########################################################################
 
@@ -223,18 +192,22 @@ x11(height = 4, width = 4); plt_denscompare
 # PLOT - plinks matrix ----------------------------------------------------
 
 # Make auxiliary dataframe
-df <- reshape2::melt(plinks)
+df <- reshape2::melt(plinks, c("x", "y"), value.name = "PPI")
+df[which(df$PPI == 0), "PPI"] <- NA
 # Generate plot
-plot_plinks <- ggplot(data=df[df$value!=0,], aes(x=Var1,y=Var2,fill=value)) +
-  geom_tile() + scale_fill_gradient("Prob.",low = "steelblue", high = "darkorange") +
-  geom_tile(inherit.aes=FALSE, data=df[df$value==0,], aes(x=Var1,y=Var2), fill="lightgrey") +
-  theme(axis.title = element_blank(), axis.ticks = element_blank(), axis.text = element_blank()) +
-  theme(panel.background = element_blank())
+plt_plinks <- ggplot() +
+  geom_tile(data = df, aes(x=x, y=y, fill=PPI), width=1, height=1) +
+  geom_rect(aes(xmin=0.5, xmax=nrow(plinks)+0.5, ymin=0.5, ymax=nrow(plinks)+0.5), fill=NA, color="grey25", linewidth=0.5) +
+  scale_fill_gradient(low='steelblue', high = "darkorange", na.value = "white") +
+  theme_void() + theme(legend.position = "bottom") + coord_equal() +
+  guides(fill = guide_colorbar(title = "Post. Prob. of Link Inclusion",
+                               title.position = "bottom", title.hjust = 0.5,
+                               barwidth = unit(2.5,"in")))
 # Clean auxiliary dataframe
 rm('df')
 
 # Show
-x11(width = 4, height = 4); plot_plinks
+x11(width = 4, height = 4); plt_plinks
 
 ###########################################################################
 
@@ -245,7 +218,7 @@ x11(width = 4, height = 4); plot_plinks
 counties_bbox <- unname(st_bbox(st_transform(sf_counties, 4326)))
 counties_map <- sf_ggmap(get_map(counties_bbox, source = "stamen", crop = FALSE))
 # CRS conversions (for plotting)
-sf_counties_3857 <- st_transform(sf_counties, 3857) #4326
+sf_counties_3857 <- st_transform(sf_counties, 3857)
 bound_sf_3857 <- st_transform(bound_sf, 3857)
 # Generate plot
 plt_boundaries_mean <- ggmap(counties_map) +
