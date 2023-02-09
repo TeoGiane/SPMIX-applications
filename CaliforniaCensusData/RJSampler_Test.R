@@ -96,11 +96,36 @@ burnin = 5000
 niter = 5000
 thin = 1
 
-# Grab input filenames
-params_filename = "input/rjsampler_params.asciipb"
+# Set sampler parameters
+params =
+  "
+  num_components: 8
+
+  p0_params {
+    mu0: 0
+    a: 2
+    b: 2
+    lam_: 0.1
+  }
+
+  rho {
+    fixed: 0.99
+  }
+
+  sigma {
+    inv_gamma_prior {
+      alpha: 2
+      beta: 2
+    }
+  }
+
+  graph_params {
+    fixed: 0.2
+  }
+  "
 
 # Run Spatial sampler
-out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params_filename)
+out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params)
 
 # Save output
 if (exists("out")) {
@@ -114,7 +139,7 @@ if (exists("out")) {
 # Posterior Analysis ------------------------------------------------------
 
 # Load output
-load("output/chain_20230120_0932_burn5000_iter5000.dat")
+load("output/chain_20230208_2225_burn5000_iter5000.dat")
 
 # Deserialization
 chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
@@ -207,7 +232,7 @@ plt_plinks <- ggplot() +
 rm('df')
 
 # Show
-x11(width = 4, height = 4); plt_plinks
+plt_plinks
 
 ###########################################################################
 
