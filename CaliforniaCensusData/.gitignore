@@ -1,5 +1,7 @@
 # Ignored files
 .Rhistory
+output/*
+input/params_sim*.asciipb
 
 # Ignored folders
-output/
+logs/
