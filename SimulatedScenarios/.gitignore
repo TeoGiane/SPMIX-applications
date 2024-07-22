@@ -3,6 +3,5 @@
 .RData
 
 # Ignored folders
-*Scenario*/
 output/
 plots/
