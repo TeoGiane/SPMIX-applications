@@ -5,3 +5,4 @@ input/params_sim*.asciipb
 
 # Ignored folders
 logs/
+.old/
