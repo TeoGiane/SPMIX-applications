@@ -4,5 +4,6 @@ output/*
 input/params_sim*.asciipb
 
 # Ignored folders
-logs/
 .old/
+logs/
+plots/
