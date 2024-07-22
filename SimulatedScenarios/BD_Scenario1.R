@@ -4,6 +4,97 @@ library("sf")
 
 library("ggplot2")
 
+ComputePostLPDF <- function(data, dchain) {
+  # Define buffer
+  out <- matrix(NA, length(dchain), 0)
+  # Get means and stadard deviations
+  means <- lapply(dchain, function(x){ sapply(x$atoms, function(a){a$mean}) })
+  stdevs <- lapply(dchain, function(x){ sapply(x$atoms, function(a){a$stdev}) })
+  for (i in 1:length(data)) {
+    # Get cluster allocations in area i
+    clus_allocs <- t(sapply(dchain, function(x){x$groupParams[[i]]$cluster_allocs}))
+    # Compute posterior log-likelihood for each datum in area i
+    out_area <- matrix(NA, length(dchain), length(data[[i]]))
+    for (j in 1:length(data[[i]])) {
+      mean_vector <- sapply(1:length(dchain), function(l){means[[l]][(1L+clus_allocs[l,j])]})
+      stdev_vector <- sapply(1:length(dchain), function(l){stdevs[[l]][(1L+clus_allocs[l,j])]})
+      out_area[,j] <- dnorm(data[[i]][j], mean = mean_vector, sd = stdev_vector, log = T)
+    }
+    cat(sprintf("\r Area %g/%g", i,length(data)))
+    # Stack plpdf in general buffer
+    out <- cbind(out, out_area)
+  }
+  # Return output matrix
+  return(out)
+}
+
+
+# Exempio per BAYSM -------------------------------------------------------
+
+means_given_clus <- function(means_chain, clus_alloc_chain, best_clus) {
+  out <- numeric(length(unique(best_clus)))
+  for (h in unique(best_clus)) {
+    data_idx <- which(best_clus == h)
+    uniq_vals_idx <- as.matrix(clus_alloc_chain[, data_idx])  # Matrix [n_iter x n_data_in_clus]
+    means_by_iter <- matrix(NA, nrow = nrow(clus_alloc_chain), ncol = length(data_idx))
+    for (i in 1:nrow(clus_alloc_chain)){
+      means_by_iter[i, ] <- means_chain[i, uniq_vals_idx[i, ]]
+    }
+    avg_mean_by_iter <- apply(means_by_iter, 1, mean)
+    muhat <- mean(avg_mean_by_iter)
+
+    out[h] <- muhat
+  }
+  return(out)
+}
+
+load("input/data_001.dat")
+# load("../BD_Scenario1/output/H_2/rho_0.95/chain_001.dat")
+load("../BD_Scenario1/output/H_10/rho_0.95/chain_001.dat")
+
+chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
+means_chain <- t(sapply(chains, function(x) {sapply(x$atoms, function(a){a$mean})}))
+clus_alloc_chain1 <- t(sapply(chains, function(x) {x$groupParams[[1]]$cluster_allocs})) + 1L
+clus_alloc_chain2 <- t(sapply(chains, function(x) {x$groupParams[[4]]$cluster_allocs})) + 1L
+best_clus1 <- as.integer(salso::salso(clus_alloc_chain1, loss = "binder"))
+best_clus2 <- as.integer(salso::salso(clus_alloc_chain2, loss = "binder"))
+means1 <- means_given_clus(means_chain, clus_alloc_chain1, best_clus1)
+means2 <- means_given_clus(means_chain, clus_alloc_chain2, best_clus2)
+
+x_grid <- as.numeric(ReadMatrixFromCSV("truth/common_grid.csv"))
+est_dens <- ComputeDensities(chains, x_grid, verbose = T, alpha = 0.05)
+
+# Area 1
+df_hist <- data.frame("x" = data[[1]])
+df_dens <- data.frame("x" = x_grid, "y" = est_dens[[1]]['est', ],
+                      "ymin" = est_dens[[1]]['low', ], "ymax" = est_dens[[1]]['up', ])
+plt_area1 <- ggplot(data = df_hist, aes(x=x, y = after_stat(density))) +
+  geom_histogram(col=NA, fill='white', bins = 20) +
+  geom_histogram(col='steelblue', fill='steelblue', alpha = 0.4, bins = 20) +
+  xlab("Data") + ylab("Density") + theme(plot.title = element_text(hjust = 0.5)) +
+  geom_ribbon(data = df_dens, aes(x=x, ymin=ymin, ymax=ymax), fill='orange', alpha = 0.2, inherit.aes = F) +
+  geom_line(data = df_dens, aes(x=x, y=y), col='darkorange', linewidth=1.2) +
+  geom_point(data = data.frame("x" = means1, "y" = rep(0.001, length(means1))), aes(x=x,y=y), color='forestgreen', size=3, inherit.aes = F) +
+  ylim(c(0,0.6)) + xlab(NULL) + ylab(NULL)
+# Area 2
+df_hist <- data.frame("x" = data[[4]])
+df_dens <- data.frame("x" = x_grid, "y" = est_dens[[4]]['est', ],
+                      "ymin" = est_dens[[4]]['low', ], "ymax" = est_dens[[4]]['up', ])
+plt_area2 <- ggplot(data = df_hist, aes(x=x, y = after_stat(density))) +
+  geom_histogram(col=NA, fill='white', bins = 20) +
+  geom_histogram(col='steelblue', fill='steelblue', alpha = 0.4, bins = 20) +
+  xlab("Data") + ylab("Density") + theme(plot.title = element_text(hjust = 0.5)) +
+  geom_ribbon(data = df_dens, aes(x=x, ymin=ymin, ymax=ymax), fill='orange', alpha = 0.2, inherit.aes = F) +
+  geom_line(data = df_dens, aes(x=x, y=y), col='darkorange', linewidth=1.2) +
+  geom_point(data = data.frame("x" = means2, "y" = rep(0.001, length(means2))), aes(x=x,y=y), color='forestgreen', size=3, inherit.aes = F) +
+  ylim(c(0,0.6)) + xlab(NULL) + ylab(NULL)
+# Show
+x11(height = 4, width = 4); gridExtra::grid.arrange(plt_area1, plt_area2, nrow=2)
+
+
+# -------------------------------------------------------------------------
+
+
 boundary_geometry <- function(boundary_list, sf_geometry) {
   if(!inherits(sf_geometry, "sf")) { stop("'sf_geometry' must be an sf object") }
   if(!("id" %in% names(sf_geometry))){
@@ -85,7 +176,7 @@ thin = 1
 # Set sampler parameters
 params =
   "
-  num_components: 8
+  num_components: 10
 
   p0_params {
     mu0: 0
@@ -95,7 +186,7 @@ params =
   }
 
   rho {
-    fixed: 0.99
+    fixed: 0.95
   }
 
   sigma {
@@ -107,8 +198,8 @@ params =
 
   graph_params {
     beta_prior {
-      a: 1
-      b: 23
+      a: 2
+      b: 36
     }
   }
   "
@@ -116,7 +207,11 @@ params =
 # Sparse inducing prior --> a = 1, b = (2*I - 2) / 3 -1 (see Paci and Consonni (2020))
 
 # Run Spatial sampler
-out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params)
+out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = "rjmcmc")
+if (exists("out")) {
+  filename <- sprintf("output/BD_Scenario1_chain_%s.dat", format(Sys.time(), format = "%Y%m%d-%H%M"))
+  save(out, file = filename)
+}
 
 # Deserialization
 chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
@@ -131,7 +226,8 @@ post_means <- matrix(nrow = numGroups, ncol=length(chains))
 post_vars <- matrix(nrow = numGroups, ncol=length(chains))
 for (j in 1:length(chains)) {
   post_means[,j] <- weights_chain[[j]] %*% means_chain[[j]]
-  post_vars[,j] <- weights_chain[[j]]^2 %*% vars_chain[[j]]
+  second_moment <- as.vector(weights_chain[[j]] %*% (vars_chain[[j]] + means_chain[[j]]^2))
+  post_vars[,j] <- second_moment - post_means[,j]^2
 }
 
 # Add to shapefile dataframe
@@ -139,16 +235,22 @@ sf_grid$post_mean <- apply(post_means, 1, mean)
 sf_grid$post_var <- apply(post_vars, 1, mean)
 
 # Compute estimated density
-data_ranges <- sapply(data, range); Npoints <- 500
-estimated_densities <- ComputeDensities(chains, Npoints, data_ranges, alpha = 0.05)
+estimated_densities <- ComputeDensities(chains, seq(range(data)[1],range(data)[2],length.out=500), verbose = T)
 
 # Compute plinks and median graph according to mean and estimated graph
+admissible_edges <- which(W != 0, arr.ind = T)
 plinks <- Reduce('+', G_chain)/length(G_chain)
-G_est <- ifelse(plinks > 0.5, 1, 0)
+
+G_est <- matrix(0, nrow(plinks), ncol(plinks))
+G_est[admissible_edges] <- ifelse(plinks[admissible_edges] > 0.5, 1, 0)
 
 # Compute boundary matrix, boundary adj list and geometry
 bound_matrix <- W - G_est
-bound_list <- spdep::mat2listw(bound_matrix)$neighbours
+
+tmp <- matrix(0, nrow(plinks), ncol(plinks))
+tmp[admissible_edges] <- ifelse(plinks[admissible_edges] <= 0.5, 1, 0)
+
+bound_list <- spdep::mat2listw(bound_matrix, style = "B", zero.policy = TRUE)$neighbours
 bound_sf <- boundary_geometry(bound_list, sf_grid)
 
 # Posterior of H - barplot
@@ -169,15 +271,18 @@ plt_traceH <- ggplot(data=df, aes(x=Iteration, y=LowPoints, xend=Iteration, yend
 plt_traceH
 
 # Plot plinks matrix
+#plinks[which(plinks != 0, arr.ind = T)] <- plinks[which(plinks != 0, arr.ind = T)] - runif(length(plinks[which(plinks != 0, arr.ind = T)]), 0, 0.001)
 plinks[which(plinks == 0, arr.ind = T)] <- NA
+# links[which(plinks != 0, arr.ind = T)] <- plinks[which(plinks != 0, arr.ind = T)] + rnorm(sum(W),0, 0.01)
 df <- reshape2::melt(plinks, c("x", "y"), value.name = "val")
 plt_plinks <- ggplot() +
   geom_tile(data = df, aes(x=x, y=y, fill=val)) +
   geom_rect(aes(xmin=0.5, ymin=0.5, xmax=numGroups+0.5, ymax=numGroups+0.5), col='gray25', fill=NA, linewidth=1) +
-  scale_fill_gradient2(low='steelblue', mid = "lightgrey", high = 'darkorange', midpoint = 0.5, na.value = 'lightgrey',
+  scale_fill_gradient2(low='steelblue', mid = "white", high = 'darkorange', midpoint = 0.5, na.value = 'white',
                        guide = guide_colourbar(title = "Post. Prob. of Inclusion", direction = "horizontal",
                                                barwidth = unit(2.5, "in"), title.position = "bottom", title.hjust = 0.5)) +
   coord_equal() + theme_void() + theme(legend.position = "bottom")
+
 # Plot estimated graph
 df <- reshape2::melt(G_est, c("x","y"), value.name = "val")
 plt_Gest <- ggplot() +
@@ -194,10 +299,10 @@ gridExtra::grid.arrange(plt_plinks, plt_Gest, ncol=2)
 plt_boundaries <- ggplot() +
   geom_sf(data = sf_grid, aes(fill=Group), col='gray25', alpha = 0.6, linewidth=0.4) +
   scale_fill_manual(values = c("steelblue","darkorange"), labels = c("Student's t", "Skew Normal"),
-                    guide = guide_legend(title = "", title.hjust = 0.5, label.position = "bottom",
+                    guide = guide_legend(title = NULL, title.hjust = 0.5, label.position = "bottom",
                                          direction = "horizontal", title.position = "bottom", keywidth = unit(1,"in"))) +
   geom_sf(data = bound_sf, fill=NA, col='darkred', linewidth=1.2) +
-  theme_void() + theme(legend.position = "bottom", legend.title = element_text(colour = "transparent"))
+  theme_void() + theme(legend.position = "bottom")
 # Show plot
 plt_boundaries
 # Save
@@ -229,3 +334,48 @@ plt_postvar
 # Save
 pdf("plt_BDpostVar.pdf", height = 4, width = 4); plt_postvar; dev.off()
 
+# Plot - Empirical density histogram in bordering areas
+areas <- c(3,4)
+plt_areas <- list()
+for (i in 1:length(areas)) {
+  df <- data.frame("x" = data[[areas[i]]])
+  plt_areas[[i]] <- ggplot(data = df, aes(x=x, y = after_stat(density))) +
+    geom_histogram(col=NA, fill='white', bins = 10) +
+    geom_histogram(col='steelblue', fill='steelblue', alpha = 0.4, bins = 10) +
+    xlab("Data") + ylab("Density") + theme(plot.title = element_text(hjust = 0.5))
+}
+# Show plot
+plt_areas[[1]]; plt_areas[[2]]
+# Save plot
+pdf("output/plt_areas_empirical_3.pdf", height = 3, width = 3); plt_areas[[1]]; dev.off()
+pdf("output/plt_areas_empirical_4.pdf", height = 3, width = 3); plt_areas[[2]]; dev.off()
+
+# Plot - Empirical density histogram + Estimated density
+plt_areasdens <- list()
+for (i in 1:length(areas)) {
+  df <- data.frame("x" = seq(data_ranges[1,areas[i]], data_ranges[2,areas[i]], length.out = Npoints),
+                   "y" = estimated_densities[[areas[i]]]['est', ],
+                   "ymin" = estimated_densities[[areas[i]]]['low', ],
+                   "ymax" = estimated_densities[[areas[i]]]['up', ])
+  plt_areasdens[[i]] <- plt_areas[[i]] +
+    geom_ribbon(data = df, aes(x=x, ymin=ymin, ymax=ymax), fill='orange', alpha = 0.2, inherit.aes = F) +
+    geom_line(data = df, aes(x=x, y=y), col='darkorange', linewidth=1.2) +
+    ylim(c(0,0.6))
+
+}
+# Show plot
+plt_areasdens[[1]]; plt_areasdens[[2]]
+# Save plot
+pdf("output/plt_areas_est_3.pdf", height = 3, width = 3); plt_areasdens[[1]]; dev.off()
+pdf("output/plt_areas_est_4.pdf", height = 3, width = 3); plt_areasdens[[2]]; dev.off()
+
+
+# ESS, WAIC, robe per review ----------------------------------------------
+
+p_chain <- sapply(chains, function(x){x$p})
+mcmcse::ess(p_chain)
+
+Nedge_chain <- sapply(G_chain, sum)
+mcmcse::ess(Nedge_chain)
+
+sigma_chain <- sapply(chains, function(x){x$Sigma$data[1]})

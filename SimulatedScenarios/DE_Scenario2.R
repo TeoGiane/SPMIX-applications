@@ -65,8 +65,8 @@ params =
 
   rho {
     beta_prior {
-      a: 1
-      b: 1
+      a: 2
+      b: 2
     }
   }
 
@@ -93,8 +93,7 @@ means_chain <- lapply(chains, function(x) sapply(x$atoms, function(x) x$mean))
 stdev_chain <- lapply(chains, function(x) sapply(x$atoms, function(x) x$stdev))
 
 # Computing estimated densities
-data_ranges <- sapply(data, range); Npoints <- 500
-estimated_densities <- ComputeDensities(chains, Npoints, data_ranges, alpha=0.05)
+estimated_densities <- ComputeDensities(chains, seq(range(data)[1], range(data)[2], length.out=500), verbose = T)
 
 # Computing true densities for comparison
 true_densities <- list()
@@ -111,31 +110,38 @@ for (i in 1:numGroups) {
 # Visualization -----------------------------------------------------------
 
 # Weights distribution on the spatial grid - 1st component
+df_text <- data.frame("Name" = row.names(sf_grid),
+                      st_coordinates(st_centroid(st_geometry(sf_grid))))
 plt_w1 <- ggplot() +
   geom_sf(data = sf_grid, aes(fill=X1), col=NA) +
+  geom_text(data = df_text, aes(x=X,y=Y,label=Name), col='gray25', size = 10) +
   geom_rect(aes(xmin=0, ymin=0, xmax=1, ymax=1), fill=NA, col='gray25', linewidth=1) +
   scale_fill_gradient(low="steelblue", high="orange") +
   theme_void() + theme(legend.position = "none")
 # Show plot
 plt_w1
 # Save
-# pdf("DE_Scenario2/plt_w1.pdf", height = 4, width = 4); print(plt_w1); dev.off()
+pdf("plots/DE_Scenario2-plt_w1.pdf", height = 4, width = 4); print(plt_w1); dev.off()
 
 # Weights distribution on the spatial grid - 2nd component
 plt_w2 <- ggplot() +
   geom_sf(data = sf_grid, aes(fill=X2), col=NA) +
+  # geom_text(data = df_text[c(1,7),], aes(x=X,y=Y,label=Name), col='gray25', size = 10) +
   geom_rect(aes(xmin=0, ymin=0, xmax=1, ymax=1), fill=NA, col='gray25', linewidth=1) +
   scale_fill_gradient(low="steelblue", high="orange") +
   theme_void() + theme(legend.position = "none")
 # Show plot
 plt_w2
 # Save
-# pdf("DE_Scenario2/plt_w2.pdf", height = 4, width = 4); print(plt_w2); dev.off()
+pdf("plots/DE_Scenario2-plt_w2.pdf", height = 4, width = 4); print(plt_w2); dev.off()
 
 # Adjacency matrix
 df <- reshape2::melt(W, c("x", "y"), value.name = "value")
+df_text <- data.frame("Name" = 1:numGroups, "X" = df$x[1:numGroups], "Y" = df$y[1:numGroups])
 plt_W <- ggplot() +
   geom_tile(data = df, aes(x=x, y=y, fill=value)) +
+  geom_text(data = df_text, aes(x=X,y=Y,label=Name), col='gray25', size=5) +
+  geom_text(data = df_text, aes(x=Y,y=X,label=Name), col='gray25', size=5) +
   scale_fill_gradient(low="white", high="orange") +
   geom_rect(aes(xmin=0.5, ymin=0.5, xmax=nrow(W)+0.5, ymax=ncol(W)+0.5),
             fill=NA, col='gray25', linewidth=1) +
@@ -143,7 +149,7 @@ plt_W <- ggplot() +
 # Show plot
 plt_W
 # Save
-# pdf("DE_Scenario2/plt_G.pdf", height = 4, width = 4); print(plt_W); dev.off()
+pdf("plots/DE_Scenario2-plt_G.pdf", height = 4, width = 4); print(plt_W); dev.off()
 
 # Posterior of H - Barplot
 df <- as.data.frame(table(H_chain)/length(H_chain)); names(df) <- c("NumComponents", "Prob.")

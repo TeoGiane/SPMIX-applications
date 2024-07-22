@@ -1,5 +1,8 @@
 # Ignored files
 .Rhistory
+.RData
 
 # Ignored folders
 *Scenario*/
+output/
+plots/
