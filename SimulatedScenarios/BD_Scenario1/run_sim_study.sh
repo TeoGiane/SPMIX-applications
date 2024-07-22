@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Define number of datasets
+NSIM=50
+
+# Set values for H and RHO
+H=(2 4 6 8 10 RJ)
+RHO=(0 0.5 0.9 0.95 0.99)
+
+# Make log folders if not present
+for h in ${H[@]}; do
+    for r in ${RHO[@]}; do
+        mkdir -p log/H_$h/rho_$r
+    done
+done
+
+# Execute run_sampler.R in parallel via GNU parallel
+parallel --dry-run -j 6 \
+    'printf -v n "%03d" {1}; Rscript --vanilla ./R/run_sampler.R -n {2} -r {3} -o ./output/H_{2}/rho_{3}/chain_$n.dat ./input/data_$n.dat &> ./log/H_{2}/rho_{3}/run_sampler_$n.log' \
+    ::: $(eval echo {1..$NSIM}) ::: ${H[@]} ::: ${RHO[@]}

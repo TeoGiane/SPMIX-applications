@@ -1,0 +1,9 @@
+# Files to ignore
+.RData
+.RHistory
+
+# Folders to ignore
+input/
+output/
+plot/
+summary/
