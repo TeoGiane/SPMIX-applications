@@ -186,13 +186,13 @@ params =
   }
 
   rho {
-    fixed: 0.95
+    fixed: 0.5
   }
 
   sigma {
     inv_gamma_prior {
-      alpha: 2
-      beta: 2
+      alpha: 3
+      beta: 3
     }
   }
 
@@ -241,16 +241,16 @@ estimated_densities <- ComputeDensities(chains, seq(range(data)[1],range(data)[2
 admissible_edges <- which(W != 0, arr.ind = T)
 plinks <- Reduce('+', G_chain)/length(G_chain)
 
-G_est <- matrix(0, nrow(plinks), ncol(plinks))
+G_est <- matrix(NA, nrow(plinks), ncol(plinks))
 G_est[admissible_edges] <- ifelse(plinks[admissible_edges] > 0.5, 1, 0)
 
 # Compute boundary matrix, boundary adj list and geometry
 bound_matrix <- W - G_est
 
-tmp <- matrix(0, nrow(plinks), ncol(plinks))
-tmp[admissible_edges] <- ifelse(plinks[admissible_edges] <= 0.5, 1, 0)
+Gb <- matrix(NA, nrow(plinks), ncol(plinks))
+Gb[admissible_edges] <- ifelse(plinks[admissible_edges] <= 0.5, 1, 0)
 
-bound_list <- spdep::mat2listw(bound_matrix, style = "B", zero.policy = TRUE)$neighbours
+bound_list <- apply(Gb, 1, function(x){which(x == 1)})
 bound_sf <- boundary_geometry(bound_list, sf_grid)
 
 # Posterior of H - barplot
