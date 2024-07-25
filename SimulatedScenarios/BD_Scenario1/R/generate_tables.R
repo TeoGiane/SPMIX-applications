@@ -2,7 +2,7 @@
 
 # Define values for H and rho
 H <- c(2,4,6,8,10,'RJ')
-rho <- c(0, 0.9, 0.95, 0.99)
+rho <- c(0,0.5,0.9,0.95,0.99)
 
 # Generate CM tables
 precisions <- matrix(NA, nrow = length(H), ncol = length(rho), dimnames = list(H,rho))
@@ -24,7 +24,6 @@ for (i in 1:length(H)) {
     specificities[i,j] <- sprintf("%g (%g)", round(mean(spec_vec),3), round(sd(spec_vec),3))
   }
 }
-
 
 # Table for meanL1 --------------------------------------------------------
 
