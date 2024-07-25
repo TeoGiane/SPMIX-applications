@@ -4,6 +4,7 @@
 
 # Folders to ignore
 input/
+log/
 output/
 plot/
 summary/
