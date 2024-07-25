@@ -87,15 +87,15 @@ params_template =
 
   sigma {
     inv_gamma_prior {
-      alpha: 3
-      beta: 3
+      alpha: 2
+      beta: 2
     }
   }
 
   graph_params {
     beta_prior {
-      a: 36
-      b: 2
+      a: 2
+      b: 36
     }
   }
   "
