@@ -29,7 +29,7 @@ for (i in 1:length(H)) {
 
 # Define values for H and rho
 H <- c(2,4,6,8,10,'RJ')
-rho <- c(0, 0.9, 0.95, 0.99)
+rho <- c(0,0.5,0.9,0.95,0.99)
 
 # Generate CM tables
 meanL1 <- matrix(NA, nrow = length(H), ncol = length(rho), dimnames = list(H,rho))
@@ -43,3 +43,21 @@ for (i in 1:length(H)) {
   }
 }
 
+
+# Table for WAIC ----------------------------------------------------------
+
+# Define values for H and rho
+H <- c(2,4,6,8,10,'RJ')
+rho <- c(0,0.5,0.9,0.95,0.99)
+
+# Generate CM tables
+meanWAIC <- matrix(NA, nrow = length(H), ncol = length(rho), dimnames = list(H,rho))
+for (i in 1:length(H)) {
+  for (j in 1:length(rho)) {
+    # Parse csv file
+    file_name <- file.path(getwd(), "summary", sprintf("meanWAIC-H_%s-rho_%s.csv", H[i], rho[j]))
+    WAIC_df <- read.csv(file_name)
+    # Compute overall mean L1 distance
+    meanWAIC[i,j] <- sprintf("%g (%g)", round(mean(L1_df[,"MeanWAIC"]),3), round(sd(L1_df[,"MeanWAIC"]), 3))
+  }
+}
