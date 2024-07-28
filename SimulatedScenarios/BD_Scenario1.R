@@ -1,33 +1,7 @@
 # Required libraries
 library("SPMIX")
 library("sf")
-
 library("ggplot2")
-
-ComputePostLPDF <- function(data, dchain) {
-  # Define buffer
-  out <- matrix(NA, length(dchain), 0)
-  # Get means and stadard deviations
-  means <- lapply(dchain, function(x){ sapply(x$atoms, function(a){a$mean}) })
-  stdevs <- lapply(dchain, function(x){ sapply(x$atoms, function(a){a$stdev}) })
-  for (i in 1:length(data)) {
-    # Get cluster allocations in area i
-    clus_allocs <- t(sapply(dchain, function(x){x$groupParams[[i]]$cluster_allocs}))
-    # Compute posterior log-likelihood for each datum in area i
-    out_area <- matrix(NA, length(dchain), length(data[[i]]))
-    for (j in 1:length(data[[i]])) {
-      mean_vector <- sapply(1:length(dchain), function(l){means[[l]][(1L+clus_allocs[l,j])]})
-      stdev_vector <- sapply(1:length(dchain), function(l){stdevs[[l]][(1L+clus_allocs[l,j])]})
-      out_area[,j] <- dnorm(data[[i]][j], mean = mean_vector, sd = stdev_vector, log = T)
-    }
-    cat(sprintf("\r Area %g/%g", i,length(data)))
-    # Stack plpdf in general buffer
-    out <- cbind(out, out_area)
-  }
-  # Return output matrix
-  return(out)
-}
-
 
 # Exempio per BAYSM -------------------------------------------------------
 
@@ -241,15 +215,15 @@ estimated_densities <- ComputeDensities(chains, seq(range(data)[1],range(data)[2
 admissible_edges <- which(W != 0, arr.ind = T)
 plinks <- Reduce('+', G_chain)/length(G_chain)
 
+# Compute median graph
 G_est <- matrix(NA, nrow(plinks), ncol(plinks))
 G_est[admissible_edges] <- ifelse(plinks[admissible_edges] > 0.5, 1, 0)
 
-# Compute boundary matrix, boundary adj list and geometry
-bound_matrix <- W - G_est
-
+# Compute boundary graph
 Gb <- matrix(NA, nrow(plinks), ncol(plinks))
 Gb[admissible_edges] <- ifelse(plinks[admissible_edges] <= 0.5, 1, 0)
 
+# Compute boundary geometry
 bound_list <- apply(Gb, 1, function(x){which(x == 1)})
 bound_sf <- boundary_geometry(bound_list, sf_grid)
 
@@ -379,3 +353,5 @@ Nedge_chain <- sapply(G_chain, sum)
 mcmcse::ess(Nedge_chain)
 
 sigma_chain <- sapply(chains, function(x){x$Sigma$data[1]})
+
+tmp <- ComputePosteriorLPDF(data, chains, verbose = T)
