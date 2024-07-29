@@ -16,7 +16,7 @@ extra_args <- parse_args(opt_parser)
 args <- commandArgs()
 basedir <- dirname(sub("--file=", "", args[grep("--file=", args)]))
 basedir <- normalizePath(file.path(getwd(), basedir))
-setwd(basedir)
+setwd(dirname(basedir))
 cat(sprintf("Current Directory: %s\n", getwd())) # Log
 
 # Check input parameters
@@ -54,26 +54,10 @@ cat(sprintf("Output directory: %s\n", normalizePath(dirname(out_file)))) # Log
 # Load required packages
 suppressMessages(library("SPMIX"))
 suppressMessages(library("sf"))
+suppressMessages(library("loo"))
 
-# Function that computes the WAIC distance
-WAIC_distance <- function(true, est){
-  if(is.null(nrow(true))){
-    # Replicate true to estimate waic using loo package
-    true <- t(replicate(nrow(est), true))
-  }
-  # Diff between estimated and true WAIC
-  return(loo::waic(log(abs(est-true)))$estimates["waic", "Estimate"])
-}
-
-# Define numGroups
-numGroups <- 36
-
-# Load true densities and common x_grid
-x_grid <- as.numeric(ReadMatrixFromCSV("truth/common_grid.csv"))
-true_dens <- ReadMatrixFromCSV("truth/true_densities.csv")
-
-# Compute mean L1 distances for each simulated dataset
-df <- data.frame("MeanWAIC"=rep(NA,num_datasets))
+# Compute WAIC for each simulated dataset
+df <- data.frame("WAIC"=rep(NA,num_datasets))
 for (n in 1:num_datasets) {
   # Load data from file
   data_file <- file.path(data_folder, sprintf("data_%03d.dat", n))
@@ -84,10 +68,10 @@ for (n in 1:num_datasets) {
   # Deserialize chain
   chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
   # Compute point estimate of posterior densities in each area
-  est_dens <- ComputeDensities(chains, x_grid, verbose = T)
+  post_lpdf <- ComputePosteriorLPDF(data, chains, verbose = F)
   # Compute mean L1 distance
-  df[n,] <- suppressWarnings(mean(sapply(1:numGroups, function(a){WAIC_distance(true_dens[a,], est_dens[[a]])})))
-  cat(sprintf("\rProcessed file: %d / %d", n, num_datasets))
+  df[n,] <- suppressWarnings(waic(post_lpdf)$estimates["waic", "Estimate"])
+  cat(sprintf("Processed file: %d / %d\n", n, num_datasets))
 }
 cat("\n")
 
