@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define number of datasets
-NSIM=3
+NSIM=50
 
 # Set values for H and RHO
 H=(2 4 6 8 10 RJ)
