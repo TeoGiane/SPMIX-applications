@@ -16,7 +16,7 @@ extra_args <- parse_args(opt_parser)
 args <- commandArgs()
 basedir <- dirname(sub("--file=", "", args[grep("--file=", args)]))
 basedir <- normalizePath(file.path(getwd(), basedir))
-setwd(basedir)
+setwd(dirname(basedir))
 cat(sprintf("Current Directory: %s\n", getwd())) # Log
 
 # Check if input-file exits
@@ -87,8 +87,8 @@ params_template =
 
   sigma {
     inv_gamma_prior {
-      alpha: 2
-      beta: 2
+      alpha: 6
+      beta: 6
     }
   }
 

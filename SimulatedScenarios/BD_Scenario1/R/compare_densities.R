@@ -16,7 +16,7 @@ extra_args <- parse_args(opt_parser)
 args <- commandArgs()
 basedir <- dirname(sub("--file=", "", args[grep("--file=", args)]))
 basedir <- normalizePath(file.path(getwd(), basedir))
-setwd(basedir)
+setwd(dirname(basedir))
 cat(sprintf("Current Directory: %s\n", getwd())) # Log
 
 # Check input parameters
@@ -81,7 +81,7 @@ for (n in 1:num_datasets) {
   # Deserialize chain
   chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
   # Compute point estimate of posterior densities in each area
-  est_dens <- ComputeDensities(chains, x_grid, verbose = T)
+  est_dens <- ComputeDensities(chains, x_grid, verbose = F)
   # Compute mean L1 distance
   df[n,] <- mean(sapply(1:numGroups, function(a){L1_distance(colMeans(est_dens[[a]]), true_dens[a,], x_grid)}))
   cat(sprintf("\rProcessed file: %d / %d", n, num_datasets))
