@@ -45,10 +45,6 @@ for (i in 1:length(H)) {
 
 # Table for WAIC ----------------------------------------------------------
 
-# Define values for H and rho
-H <- c(2,4,6,8,10,'RJ')
-rho <- c(0,0.5,0.9,0.95,0.99)
-
 # Generate CM tables
 meanWAIC <- matrix(NA, nrow = length(H), ncol = length(rho), dimnames = list(H,rho))
 for (i in 1:length(H)) {
@@ -60,3 +56,15 @@ for (i in 1:length(H)) {
     meanWAIC[i,j] <- sprintf("%g (%g)", round(mean(WAIC_df[,"WAIC"]),1), round(sd(WAIC_df[,"WAIC"]), 1))
   }
 }
+
+
+# Table of Elapsed Times --------------------------------------------------
+
+parseTimeDF <- function(h){
+  file_name <- file.path(getwd(), "summary", alphabeta, sprintf("elapsed_times-H_%s.txt", h))
+  out <- data.frame(read.table(file_name, header = F))
+  names(out) <- h
+  return(out)
+}
+TimesDF <- do.call(cbind, lapply(H, parseTimeDF))
+
