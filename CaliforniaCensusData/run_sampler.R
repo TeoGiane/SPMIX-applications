@@ -1,61 +1,111 @@
+# Command line input options via argparser
+suppressMessages(library("argparser"))
+opt_parser <- arg_parser(name = "run_sampler", hide.opts = TRUE,
+                         description = "Run SPMIX::Sampler.BoundaryDetection on the California Census dataset")
+opt_parser <- add_argument(opt_parser, arg = "--rho", type = "double", default = 0.95,
+                           help = "Value of 'rho' parameter, fixed in (0,1)")
+opt_parser <- add_argument(opt_parser, arg = "--num-components", type = "character", short = "-c",
+                           help = "Value for the number of components, or 'RJ' if the reverisble jump sampler is considered")
+opt_parser <- add_argument(opt_parser, arg = "--output-file", type = "character", default = "./output/chain.dat",
+                           help = "Relative path to the output file")
+extra_args <- parse_args(opt_parser)
+
+
+# Preliminar checks -------------------------------------------------------
+
+# Find parent folder of current file and set working directory
+args <- commandArgs()
+basedir <- dirname(sub("--file=", "", args[grep("--file=", args)]))
+basedir <- normalizePath(file.path(getwd(), basedir))
+setwd(basedir)
+cat(sprintf("Current Directory: %s\n", getwd())) # Log
+
+# Check if data file exists
+data_file <- file.path(getwd(), "data", "clean_data.dat")
+if(!file.exists(data_file)){
+  stop(sprintf("%s does not exist", data_file))
+}
+data_file <- normalizePath(data_file)
+cat(sprintf("Data file: %s\n", data_file)) # Log
+
+# Check if Adj. Matrix file exists
+adj_file <- file.path(getwd(), "data", "adj_matrix.dat")
+if(!file.exists(adj_file)){
+  stop(sprintf("%s does not exist", adj_file))
+}
+adj_file <- normalizePath(adj_file)
+cat(sprintf("Adj. Matrix file: %s\n", adj_file)) # Log
+
+# Set algo type according to --num-components
+if (extra_args$num_components == "RJ") {
+  algo_type <- "rjmcmc"
+  H <- 10L
+} else {
+  algo_type <- "no_rjmcmc"
+  H <- as.integer(extra_args$num_components)
+}
+cat(sprintf("Algorithm Type: %s\n", algo_type)) # Log
+cat(sprintf("N° of Components: %g\n", H)) # Log
+cat(sprintf("rho: %g\n", extra_args$rho)) # Log
+
+# Create directory for output if does not exist
+out_file <- file.path(getwd(), extra_args$output_file)
+if(!dir.exists(dirname(out_file))) {
+  dir.create(dirname(out_file), recursive = TRUE)
+}
+cat(sprintf("Output directory: %s\n", normalizePath(dirname(out_file)))) # Log
+
+
+# Main code ---------------------------------------------------------------
+
 # Import required packages
-library("optparse")
 suppressMessages(library("SPMIX"))
 
-# Argument parser
-option_list <- list (
-  make_option(c("--sim_name"), type = "character", default = NULL,
-              help = "Name of the simulation to run. If the file 'input/params_<sim_name>.asciipb' exists,
-                      the sampler will the prior hyperparameters specified in that file,
-                      otherwise default values will be used.",
-              metavar = "character")
-)
-opt_parser <- OptionParser(option_list=option_list)
-args <- parse_args(opt_parser)
-
-# log
-cat(sprintf("Current Directory: %s\n", getwd()))
-
-# Create directory to store files
-sim_folder <- sprintf("%s/output/%s", getwd(), args$sim_name)
-dir.create(sim_folder, showWarnings = F)
-
-# Select parameter file to use
-params_file <- ifelse(file.exists(sprintf("%s/input/params_%s.asciipb", getwd(), args$sim_name)),
-                      sprintf("%s/input/params_%s.asciipb", getwd(), args$sim_name),
-                      sprintf("%s/input/params_default.asciipb", getwd()))
-
-# log
-cat(sprintf("Using prior hyperparameters in file: %s\n", params_file))
-
-# Copy parameter file into output folder
-success <- file.copy(params_file, sim_folder, overwrite = TRUE)
-
-#log
-if(success) {
-  cat(sprintf("Prior hyperparameters file has been copied in: %s\n", sim_folder))
-}
-
-# Load data and adjacency matrix
-load(sprintf("%s/data/clean_data.dat", getwd()))
-load(sprintf("%s/data/adj_matrix.dat", getwd()))
-
-# log
-cat("Data have been loaded\n")
+# Load input files
+load(data_file)
+load(adj_file)
 
 # Setting MCMC parameters
 burnin = 5000
 niter = 5000
 thin = 1
 
-# log
-cat("Sampler is about to start:\n\n")
+# Set sampler parameters template
+params_template =
+  "
+  num_components: %g
+
+  p0_params {
+    mu0: 0
+    a: 2
+    b: 2
+    lam_: 0.1
+  }
+
+  rho {
+    fixed: %g
+  }
+
+  sigma {
+    inv_gamma_prior {
+      alpha: 3
+      beta: 3
+    }
+  }
+
+  graph_params {
+    beta_prior {
+      a: 2
+      b: 93
+    }
+  }
+  "
+
+# Set sampler parameter
+params <- sprintf(params_template, H, extra_args$rho)
 
 # Run Spatial sampler
-out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params_file)
-
-# Save output
+out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = algo_type)
 if (exists("out")) {
-  filename <- sprintf("%s/chain_%s.dat", sim_folder, args$sim_name)
-  save(out, file = filename)
+  save(out, file = out_file)
 }
