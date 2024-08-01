@@ -1,9 +1,10 @@
 # Ignored files
 .Rhistory
-output/*
-input/params_sim*.asciipb
+download-links.txt
 
 # Ignored folders
 .old/
+data/
 logs/
+output/
 plots/
