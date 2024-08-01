@@ -1,3 +1,5 @@
+# # ---- BD SCENARIO 1 - RUN SAMPLER ---- # #
+
 # Command line input options via argparser
 suppressMessages(library("argparser"))
 opt_parser <- arg_parser(name = "run_sampler", hide.opts = TRUE,
@@ -11,6 +13,9 @@ opt_parser <- add_argument(opt_parser, arg = "--num-components", short = "-c",
 opt_parser <- add_argument(opt_parser, arg = "--output-file", type = "character", default = "./output/chain.dat",
                            help = "Relative path to the output file")
 extra_args <- parse_args(opt_parser)
+
+
+# Preliminary checks ------------------------------------------------------
 
 # Find parent folder of current file and set working directory
 args <- commandArgs()
