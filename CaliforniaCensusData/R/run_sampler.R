@@ -1,7 +1,11 @@
+# # ---- CALIFORNIA CENSUS DATA - RUN SAMPLER ---- # #
+
 # Command line input options via argparser
 suppressMessages(library("argparser"))
 opt_parser <- arg_parser(name = "run_sampler", hide.opts = TRUE,
                          description = "Run SPMIX::Sampler.BoundaryDetection on the California Census dataset")
+opt_parser <- add_argument(opt_parser, arg = "input-file", type = "character",
+                           help = "Relative path to input data file")
 opt_parser <- add_argument(opt_parser, arg = "--rho", type = "double", default = 0.95,
                            help = "Value of 'rho' parameter, fixed in (0,1)")
 opt_parser <- add_argument(opt_parser, arg = "--num-components", type = "character", short = "-c",
@@ -11,17 +15,17 @@ opt_parser <- add_argument(opt_parser, arg = "--output-file", type = "character"
 extra_args <- parse_args(opt_parser)
 
 
-# Preliminar checks -------------------------------------------------------
+# Preliminary checks ------------------------------------------------------
 
 # Find parent folder of current file and set working directory
 args <- commandArgs()
 basedir <- dirname(sub("--file=", "", args[grep("--file=", args)]))
 basedir <- normalizePath(file.path(getwd(), basedir))
-setwd(basedir)
+setwd(dirname(basedir))
 cat(sprintf("Current Directory: %s\n", getwd())) # Log
 
 # Check if data file exists
-data_file <- file.path(getwd(), "data", "clean_data.dat")
+data_file <- file.path(getwd(), extra_args$input_file)
 if(!file.exists(data_file)){
   stop(sprintf("%s does not exist", data_file))
 }
@@ -66,8 +70,8 @@ load(data_file)
 load(adj_file)
 
 # Setting MCMC parameters
-burnin = 5000
-niter = 5000
+burnin = 5#000
+niter = 5#000
 thin = 1
 
 # Set sampler parameters template
@@ -76,9 +80,9 @@ params_template =
   num_components: %g
 
   p0_params {
-    mu0: 0
-    a: 2
-    b: 2
+    mu0: 10
+    a: 12
+    b: 11
     lam_: 0.1
   }
 
@@ -88,8 +92,8 @@ params_template =
 
   sigma {
     inv_gamma_prior {
-      alpha: 3
-      beta: 3
+      alpha: 6
+      beta: 6
     }
   }
 
