@@ -77,7 +77,7 @@ ref_est_dens <- ComputeDensities(ref_chains, x_grid, verbose = F)
 df <- data.frame("MeanL1" = numeric(0))
 for (curr_chain_folder in chains_folder) {
   # Load current chain from file
-  load(file.path(curr_chain_folder, "chain.dat"))
+  load(file.path(curr_chain_folder, "chain_001.dat"))
   # Deserialize chain
   chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
   # Compute point estimate of posterior densities in each area
