@@ -5,6 +5,6 @@ download-links.txt
 # Ignored folders
 .old/
 data/
-logs/
+log/
 output/
 plots/
