@@ -65,7 +65,7 @@ x_grid <- seq(range(data)[1], range(data)[2], length.out = 500)
 numGroups <- length(data)
 
 # Load reference chain from file
-ref_chain_file <- file.path(ref_chain_folder, "chain.dat")
+ref_chain_file <- file.path(ref_chain_folder, "chain_001.dat")
 load(ref_chain_file)
 # Deserialize chain
 ref_chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
