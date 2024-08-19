@@ -57,7 +57,7 @@ L1_distance <- function(y1, y2, x){
   return(I * mean(abs(y1 - y2)))
 }
 
-# Load true densities and common x_grid
+# Load data and common x_grid
 load("data/data_001.dat")
 x_grid <- seq(range(data)[1], range(data)[2], length.out = 500)
 
@@ -72,8 +72,7 @@ ref_chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x)
 # Compute point estimate of posterior densities in each area
 ref_est_dens <- ComputeDensities(ref_chains, x_grid, verbose = F)
 
-
-# Compute mean L1 distances
+# Compute mean L1 distances for every value of rho in the given scenario
 df <- data.frame("MeanL1" = numeric(0))
 for (curr_chain_folder in chains_folder) {
   # Load current chain from file
