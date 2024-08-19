@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Set values for H and RHO
+# Set values for H
 H=(RJ)
 
 # Make log folders if not present
