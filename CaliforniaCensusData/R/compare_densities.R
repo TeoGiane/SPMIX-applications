@@ -12,7 +12,7 @@ extra_args <- parse_args(opt_parser)
 args <- commandArgs()
 basedir <- dirname(sub("--file=", "", args[grep("--file=", args)]))
 basedir <- normalizePath(file.path(getwd(), basedir))
-setwd(basedir)
+setwd(dirname(basedir))
 cat(sprintf("Current Directory: %s\n", getwd())) # Log
 
 # Check input parameters
@@ -58,7 +58,7 @@ L1_distance <- function(y1, y2, x){
 }
 
 # Load true densities and common x_grid
-load("data/clean_data.dat")
+load("data/data_001.dat")
 x_grid <- seq(range(data)[1], range(data)[2], length.out = 500)
 
 # Define numGroups
@@ -77,13 +77,13 @@ ref_est_dens <- ComputeDensities(ref_chains, x_grid, verbose = F)
 df <- data.frame("MeanL1" = numeric(0))
 for (curr_chain_folder in chains_folder) {
   # Load current chain from file
-  load(file.path(curr_chain_folder, "chain.dat"))
+  load(file.path(curr_chain_folder, "chain_001.dat"))
   # Deserialize chain
   chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
   # Compute point estimate of posterior densities in each area
   est_dens <- ComputeDensities(chains, x_grid, verbose = F)
   # Compute mean L1 distance
-  curr_meanL1 <- data.frame("MeanL1" = mean(sapply(1:numGroups, function(a){L1_distance(est_dens[[a]]['est',], ref_est_dens[[a]]['est',], x_grid)})) )
+  curr_meanL1 <- data.frame("MeanL1" = mean(sapply(1:numGroups, function(a){L1_distance(colMeans(est_dens[[a]]), colMeans(ref_est_dens[[a]]), x_grid)})) )
   df <- rbind(df, curr_meanL1)
   cat(sprintf("Processed folder: %s\n", curr_chain_folder))
 }
