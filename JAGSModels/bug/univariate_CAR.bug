@@ -1,0 +1,28 @@
+model {
+	/* Prior on G */
+	for(i in 1:n) {
+		for(k in 1:n) {
+			tmp[i,k] ~ dbern(p)
+			G[i,k] = tmp[i,k] * Gadj[i,k]
+		}
+	}
+	p ~ dbeta(2,2)
+		
+	/* CAR Prior */
+	for(i in 1:n) {
+		F[i,i] = ( rho*sum(G[i,]) + (1-rho) )
+		for(j in (i+1):n) {
+			F[i,j] = 0
+			F[j,i] = 0
+		}
+	}
+	W[1:n] ~ dmnorm(rep(0,n), (F-rho*G))
+	
+	/* Prior on tau */
+	tau ~ dgamma(2, 2)
+		
+	/* Likelihood*/
+	for (i in 1:n) {
+		Y[i] ~ dnorm(W[i], tau)
+	}
+}

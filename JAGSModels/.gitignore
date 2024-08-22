@@ -1,0 +1,8 @@
+# Ignored Files
+.Rdata
+.RHistory
+
+# Ignored folders
+data/
+log/
+output/
