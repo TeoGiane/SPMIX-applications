@@ -25,7 +25,7 @@ suppressMessages(library("SPMIX"))
 # sim_name <- "sim28"
 # sim_name <- "rho0"
 
-sim_folder <- file.path(getwd(), "output/H_RJ/rho_0.99")
+sim_folder <- file.path(getwd(), "output/H_RJ/rho_0.95")
 
 # log
 cat(sprintf("Current Directory: %s\n", getwd()))
@@ -149,9 +149,36 @@ H_chain <- sapply(chains, function(x) x$num_components)
 G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
 
 # Some chains to inspect
-Nedges_chain <- sapply(G_chain, sum); plot(Nedges_chain, type='l')
-sigma_chain <- sapply(chains, function(x){x$Sigma$data[1]}); plot(sigma_chain, type='l')
-p_chain <- sapply(chains, function(x){x$p}); plot(p_chain, type='l')
+Nedges_chain <- sapply(G_chain, sum); mcmcse::ess(Nedges_chain)
+sigma_chain <- sapply(chains, function(x){x$Sigma$data[1]}); mcmcse::ess(sigma_chain)
+p_chain <- sapply(chains, function(x){x$p}); mcmcse::ess(p_chain)
+
+# Visualization of traceplots - |G|
+df <- data.frame("Iteration"=1:length(Nedges_chain), "Value"=Nedges_chain)
+# Generate
+plt_Nedges <- ggplot(data = df) + 
+  geom_line(aes(x=Iteration, y=Value)) + ylab("|G|")
+# Show / Save
+x11(height = 3, width = 3); plt_Nedges
+# pdf("plots/plt_Nedges.pdf", height = 3, width = 3); plt_Nedges; dev.off()
+
+# Visualization of traceplots - sigma
+df <- data.frame("Iteration"=1:length(sigma_chain), "Value"=sigma_chain)
+# Generate
+plt_sigma <- ggplot(data = df) + 
+  geom_line(aes(x=Iteration, y=Value)) + ylab(bquote(sigma^2))
+# Show / Save
+x11(height = 3, width = 3); plt_sigma
+# pdf("plots/plt_sigma.pdf", height = 3, width = 3); plt_sigma; dev.off()
+
+# Visualization of traceplots - p
+df <- data.frame("Iteration"=1:length(p_chain), "Value"=p_chain)
+# Generate
+plt_p <- ggplot(data = df) + 
+  geom_line(aes(x=Iteration, y=Value)) + ylab("p")
+# Show / Save
+x11(height = 3, width = 3); plt_p
+# pdf("plots/plt_p.pdf", height = 3, width = 3); plt_p; dev.off()
 
 # Compute posterior mean and variance for each PUMA
 means_chain <- lapply(chains, function(x) sapply(x$atoms, function(y) y$mean))
