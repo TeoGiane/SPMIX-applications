@@ -160,13 +160,13 @@ params =
   }
 
   rho {
-    fixed: 0.5
+    fixed: 0.95
   }
 
   sigma {
     inv_gamma_prior {
-      alpha: 3
-      beta: 3
+      alpha: 6
+      beta: 6
     }
   }
 
@@ -211,21 +211,28 @@ sf_grid$post_var <- apply(post_vars, 1, mean)
 # Compute estimated density
 estimated_densities <- ComputeDensities(chains, seq(range(data)[1],range(data)[2],length.out=500), verbose = T)
 
-# Compute plinks and median graph according to mean and estimated graph
+# Compute admissible edges
 admissible_edges <- which(W != 0, arr.ind = T)
+
+# Compute plinks and median graph according to mean and estimated graph
 plinks <- Reduce('+', G_chain)/length(G_chain)
+plinks[which(W == 0, arr.ind = T)] <- NA
 
 # Compute median graph
 G_est <- matrix(NA, nrow(plinks), ncol(plinks))
-G_est[admissible_edges] <- ifelse(plinks[admissible_edges] > 0.5, 1, 0)
+G_est[admissible_edges] <- ifelse(plinks[admissible_edges] >= 0.5, 1, NA)
 
 # Compute boundary graph
 Gb <- matrix(NA, nrow(plinks), ncol(plinks))
-Gb[admissible_edges] <- ifelse(plinks[admissible_edges] <= 0.5, 1, 0)
+Gb[admissible_edges] <- as.factor(ifelse(plinks[admissible_edges] < 0.5, 1, NA))
 
 # Compute boundary geometry
-bound_list <- apply(Gb, 1, function(x){which(x == 1)})
-bound_sf <- boundary_geometry(bound_list, sf_grid)
+if(!all(is.na(Gb))){
+  bound_list <- apply(Gb, 1, function(x){which(x == 1)})
+  bound_sf <- boundary_geometry(bound_list, sf_grid)
+} else {
+  cat("No Boundaries have been found\n")
+}
 
 # Posterior of H - barplot
 df <- as.data.frame(table(H_chain)/length(H_chain)); names(df) <- c("NumComponents", "Prob.")
@@ -245,9 +252,6 @@ plt_traceH <- ggplot(data=df, aes(x=Iteration, y=LowPoints, xend=Iteration, yend
 plt_traceH
 
 # Plot plinks matrix
-#plinks[which(plinks != 0, arr.ind = T)] <- plinks[which(plinks != 0, arr.ind = T)] - runif(length(plinks[which(plinks != 0, arr.ind = T)]), 0, 0.001)
-plinks[which(plinks == 0, arr.ind = T)] <- NA
-# links[which(plinks != 0, arr.ind = T)] <- plinks[which(plinks != 0, arr.ind = T)] + rnorm(sum(W),0, 0.01)
 df <- reshape2::melt(plinks, c("x", "y"), value.name = "val")
 plt_plinks <- ggplot() +
   geom_tile(data = df, aes(x=x, y=y, fill=val)) +
@@ -262,7 +266,7 @@ df <- reshape2::melt(G_est, c("x","y"), value.name = "val")
 plt_Gest <- ggplot() +
   geom_tile(data = df, aes(x=x, y=y, fill=val), width=1, height=1) +
   geom_rect(aes(xmin=0.5, ymin=0.5, xmax=nrow(G_est)+0.5, ymax=ncol(G_est)+0.5), col='gray25', fill=NA, linewidth=1) +
-  scale_fill_gradient(low = 'white', high = 'darkorange',
+  scale_fill_gradient(low = 'darkorange', high = 'darkorange', na.value = "white",
                       guide = guide_legend(override.aes = list(alpha = 0), title="",
                                            title.position="bottom", label.position="bottom")) +
   theme_void() + coord_equal() + theme(legend.position = "bottom", legend.text = element_text(colour = "transparent"))
@@ -280,7 +284,7 @@ plt_boundaries <- ggplot() +
 # Show plot
 plt_boundaries
 # Save
-pdf("plt_BDgroup.pdf", height = 4, width = 4); plt_boundaries; dev.off()
+# pdf("plt_BDgroup.pdf", height = 4, width = 4); plt_boundaries; dev.off()
 
 # Plot boundaries on the grid + post_mean
 plt_postmean <- ggplot() +
@@ -306,7 +310,7 @@ plt_postvar <- ggplot() +
 # Show plot
 plt_postvar
 # Save
-pdf("plt_BDpostVar.pdf", height = 4, width = 4); plt_postvar; dev.off()
+# pdf("plt_BDpostVar.pdf", height = 4, width = 4); plt_postvar; dev.off()
 
 # Plot - Empirical density histogram in bordering areas
 areas <- c(3,4)
@@ -321,8 +325,8 @@ for (i in 1:length(areas)) {
 # Show plot
 plt_areas[[1]]; plt_areas[[2]]
 # Save plot
-pdf("output/plt_areas_empirical_3.pdf", height = 3, width = 3); plt_areas[[1]]; dev.off()
-pdf("output/plt_areas_empirical_4.pdf", height = 3, width = 3); plt_areas[[2]]; dev.off()
+# pdf("output/plt_areas_empirical_3.pdf", height = 3, width = 3); plt_areas[[1]]; dev.off()
+# pdf("output/plt_areas_empirical_4.pdf", height = 3, width = 3); plt_areas[[2]]; dev.off()
 
 # Plot - Empirical density histogram + Estimated density
 plt_areasdens <- list()
@@ -340,8 +344,8 @@ for (i in 1:length(areas)) {
 # Show plot
 plt_areasdens[[1]]; plt_areasdens[[2]]
 # Save plot
-pdf("output/plt_areas_est_3.pdf", height = 3, width = 3); plt_areasdens[[1]]; dev.off()
-pdf("output/plt_areas_est_4.pdf", height = 3, width = 3); plt_areasdens[[2]]; dev.off()
+# pdf("output/plt_areas_est_3.pdf", height = 3, width = 3); plt_areasdens[[1]]; dev.off()
+# pdf("output/plt_areas_est_4.pdf", height = 3, width = 3); plt_areasdens[[2]]; dev.off()
 
 
 # ESS, WAIC, robe per review ----------------------------------------------
