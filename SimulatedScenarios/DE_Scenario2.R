@@ -4,7 +4,6 @@
 # Required libraries
 library("SPMIX")
 library("ggplot2")
-# library("sp") # also rgdal, rgeos, maptools have been installed
 library("sf")
 
 ###########################################################################
