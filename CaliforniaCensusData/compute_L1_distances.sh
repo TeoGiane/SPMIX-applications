@@ -13,4 +13,4 @@ parallel -j 15 \
     'Rscript --vanilla ./R/compare_densities.R -c {1} ./summary/meanL1-H_{1}.csv &> ./log/H_{1}/compare_densities.log' ::: ${H[@]}
 
 # Finished job notification
-echo "JOB 'compute_meanL1_distances.sh' has finished" | mail -s "[Notification] - Job finished" matteo.gianella@polimi.it
+echo "JOB 'compute_L1_distances.sh' has finished" | mail -s "[Notification] - Job finished" matteo.gianella@polimi.it
