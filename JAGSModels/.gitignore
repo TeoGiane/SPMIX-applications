@@ -5,4 +5,5 @@
 # Ignored folders
 data/
 log/
+plots/
 output/
