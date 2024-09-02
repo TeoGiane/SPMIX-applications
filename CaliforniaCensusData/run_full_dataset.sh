@@ -13,7 +13,7 @@ done
 
 # Execute run_sampler.R in parallel via GNU parallel
 parallel -j 15 \
-  '; Rscript --vanilla ./R/run_sampler.R -c {1} -r {2} -o ./output/H_{1}/rho_{2}/chain_full_dataset.dat ./data/full_dataset.dat &> ./log/H_{1}/rho_{2}/run_full_dataset.log' \
+  'Rscript --vanilla ./R/run_sampler.R -c {1} -r {2} -o ./output/H_{1}/rho_{2}/chain_full_dataset.dat ./data/full_dataset.dat &> ./log/H_{1}/rho_{2}/run_full_dataset.log' \
   ::: ${H[@]} ::: ${RHO[@]}
 
 # Finished job notification
