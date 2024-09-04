@@ -1,7 +1,7 @@
 #! /bin/bash
 
 # Define useful variables
-NUM_DATASETS=10
+NUM_DATASETS=100
 SUBSAMPLE_SIZE=100
 
 # Clean up data/ folder if already present
