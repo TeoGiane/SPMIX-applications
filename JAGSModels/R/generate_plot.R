@@ -21,6 +21,13 @@ bbeta <- 2
 filename <- file.path(getwd(), "output", sprintf("MCAR_fit-a%gb%g.dat", abeta, bbeta))
 load(filename)
 
+# 100 Iterations of burnin
+burnin <- 100
+p_chain <- lapply(as.mcmc.list(MCAR_fit$p), function(chain){ as.vector(chain[(burnin+1):dim(chain)[1],1:dim(chain)[2]]) })
+p_chain <- do.call(c, p_chain)
+tau_chain <- lapply(as.mcmc.list(MCAR_fit$tau), function(chain){ as.vector(chain[(burnin+1):dim(chain)[1],1:dim(chain)[2]]) })
+tau_chain <- do.call(c, tau_chain)
+
 # Compute admissible edges
 Eadj <- which(W == 1, arr.ind = TRUE)
 
@@ -53,13 +60,13 @@ plt_plinks <- ggplot() +
   theme_void() + theme(legend.position = "bottom") + coord_equal()
 
 # PLOT - Traceplot of p
-p_df <- data.frame("Iteration"=1:length(MCAR_fit$p), "p"=as.vector(MCAR_fit$p))
+p_df <- data.frame("Iteration"=1:length(p_chain), "p"=p_chain)
 # Generate
 plt_p <- ggplot() +
   geom_line(data = p_df, aes(x=Iteration, y=p), linewidth=1.2)
 
 # PLOT - traceplot of sigma^2
-sigma2_df <- data.frame("Iteration"=1:length(MCAR_fit$p), "sigma2"=1/as.vector(MCAR_fit$tau))
+sigma2_df <- data.frame("Iteration"=1:length(tau_chain), "sigma2"=1/tau_chain)
 # Generate
 plt_sigma2 <- ggplot() +
   geom_line(data = sigma2_df, aes(x=Iteration, y=sigma2), linewidth=1.2) +
