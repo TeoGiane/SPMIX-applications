@@ -58,25 +58,40 @@ sf_ggmap <- function(map) {
   return(map)
 }
 
-boundary_geometry <- function(boundary_list, sf_geometry) {
+boundary_geometry <- function(boundary_graph, sf_geometry) {
+  # Check
   if(!inherits(sf_geometry, "sf")) { stop("'sf_geometry' must be an sf object") }
+  
+  # Add id column
   if(!("id" %in% names(sf_geometry))){
     sf_geometry$id <- 1:nrow(sf_geometry)
   }
   
-  # Create empty list
-  geom_bdd <- list()
+  # Generate boundary list using upper-triangular view of boundary_graph
+  boundary_graph[lower.tri(boundary_graph)] <- NA
+  boundary_list <- apply(boundary_graph, 1, function(x){which(x==1)})
   
+  # Create empty list
+  geom_bdd <- list(); k <- 1
   for(i in 1:nrow(sf_geometry)) {
+    for (j in (boundary_list[[i]])) {
+      # Compute boundary geometry between i and j
+      sel_geom <- sf_geometry[c(i,j), c("id", "geometry")]
+      bounds <- suppressWarnings(st_intersection(sel_geom, sel_geom))
+      bounds <- st_geometry(bounds[bounds$id != bounds$id.1, ])
+      # Append to list
+      geom_bdd[[k]] <- st_sf(geometry = bounds); k <- k+1
+    }
+    
     # Get current area and its boundaries
-    sel_geom <- sf_geometry[c(i, boundary_list[[i]]), c("id", "geometry")]
+    # sel_geom <- sf_geometry[c(i, boundary_list[[i]]), c("id", "geometry")]
     
     # Compute geometry of boundary
-    bounds <- suppressWarnings(st_intersection(sel_geom, sel_geom))
-    bounds <- st_geometry(bounds[bounds$id != bounds$id.1, ])
+    # bounds <- suppressWarnings(st_intersection(sel_geom, sel_geom))
+    # bounds <- st_geometry(bounds[bounds$id != bounds$id.1, ])
     
     # Add to list
-    geom_bdd[[i]] <- st_sf(geometry = bounds)
+    # geom_bdd[[i]] <- st_sf(geometry = bounds)
   }
   
   geom_bdd <- do.call(rbind, geom_bdd)
@@ -118,30 +133,19 @@ W <- nb2mat(adj_list, style = "B")
 # Import data
 load("data/data_001.dat")
 
-
-
-
-# Import usa shapefile
-# sf_usa <- read_sf("shp/us-pumas/us-pumas.shp")
-# sf_usa$id <- row.names(sf_usa)
-# sf_usa$PUMA <- as.character(as.numeric(sf_usa$PUMA))
-
-# Select only LA + Ventura + Orange counties, California
-# sf_cali <- sf_usa[sf_usa$State == "California", ]
-# sel_county <- c("Los Angeles County", "Ventura County", "Orange County")
-# sf_counties <- sf_cali[grep(paste(sel_county, collapse = "|"), sf_cali$Name), ]
-# pumas <- sf_counties$PUMA
-
-# Import data and adjacency matrix
+# Import data and adjacency matrix (OLD)
 # load("data/clean_data.dat")
 # load("data/adj_matrix.dat")
 # adj_list <- apply(W, 1, function(x){which(x==1)})
+
 cat("Shapefiles have been imported\n") # log
 
+# out_file = file.path(sim_folder, "chain_001.dat")
+# out_file = file.path(sim_folder, "chain_full_dataset.dat")
+
 # Load output
-out_file = file.path(sim_folder, "chain_001.dat")
-load(out_file)
-cat(sprintf("Loaded chain: %s\n", out_file)) # log
+load(file.path(sim_folder, "chain_001.dat"))
+cat(sprintf("Loaded chain: %s\n", file.path(sim_folder, "chain_001.dat"))) # log
 
 # Deserialization
 chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
@@ -149,36 +153,54 @@ H_chain <- sapply(chains, function(x) x$num_components)
 G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
 
 # Some chains to inspect
-Nedges_chain <- sapply(G_chain, sum); mcmcse::ess(Nedges_chain)
+Nedge_chain <- sapply(G_chain, function(x){sum(x[upper.tri(x)])}); mcmcse::ess(Nedge_chain)
 sigma_chain <- sapply(chains, function(x){x$Sigma$data[1]}); mcmcse::ess(sigma_chain)
 p_chain <- sapply(chains, function(x){x$p}); mcmcse::ess(p_chain)
 
-# Visualization of traceplots - |G|
-df <- data.frame("Iteration"=1:length(Nedges_chain), "Value"=Nedges_chain)
+# PLOT - Traceplot of |G|
+df <- data.frame("Iteration"=1:length(Nedge_chain), "Value"=Nedge_chain)
 # Generate
-plt_Nedges <- ggplot(data = df) + 
+plt_Nedge_chain <- ggplot(data = df) + 
   geom_line(aes(x=Iteration, y=Value)) + ylab("|G|")
 # Show / Save
-x11(height = 3, width = 3); plt_Nedges
-# pdf("plots/plt_Nedges.pdf", height = 3, width = 3); plt_Nedges; dev.off()
+x11(height = 4, width = 4); plt_Nedge_chain
+# pdf("plots/plt_Nedge_chain.pdf", height = 4, width = 4); plt_Nedge_chain; dev.off()
 
-# Visualization of traceplots - sigma
+# PLOT - Traceplot of sigma^2
 df <- data.frame("Iteration"=1:length(sigma_chain), "Value"=sigma_chain)
 # Generate
-plt_sigma <- ggplot(data = df) + 
+plt_sigma_chain <- ggplot(data = df) + 
   geom_line(aes(x=Iteration, y=Value)) + ylab(bquote(sigma^2))
 # Show / Save
-x11(height = 3, width = 3); plt_sigma
-# pdf("plots/plt_sigma.pdf", height = 3, width = 3); plt_sigma; dev.off()
+x11(height = 4, width = 4); plt_sigma_chain
+# pdf("plots/plt_sigma_chain.pdf", height = 4, width = 4); plt_sigma_chain; dev.off()
 
-# Visualization of traceplots - p
+# PLOT - traceplot of p
 df <- data.frame("Iteration"=1:length(p_chain), "Value"=p_chain)
 # Generate
-plt_p <- ggplot(data = df) + 
+plt_p_chain <- ggplot(data = df) + 
   geom_line(aes(x=Iteration, y=Value)) + ylab("p")
 # Show / Save
-x11(height = 3, width = 3); plt_p
-# pdf("plots/plt_p.pdf", height = 3, width = 3); plt_p; dev.off()
+x11(height = 4, width = 4); plt_p_chain
+# pdf("plots/plt_p_chain.pdf", height = 4, width = 4); plt_p_chain; dev.off()
+
+# PLOT - Traceplot of |G| for different initalizations
+load("output/Nedge_chain_startempty.dat")
+df <- data.frame("Iter" = 1:length(Nedge_chain), "Value"=Nedge_chain, "Group"=rep("Empty", length(Nedge_chain)))
+load("output/Nedge_chain_startfull.dat")
+df <- rbind(df, data.frame("Iter" = 1:length(Nedge_chain), "Value"=Nedge_chain, "Group"=rep("Full", length(Nedge_chain))))
+load("output/Nedge_chain_startrandom.dat")
+df <- rbind(df, data.frame("Iter" = 1:length(Nedge_chain), "Value"=Nedge_chain, "Group"=rep("Random", length(Nedge_chain))))
+#Generate plot
+plt_Nedge_chain_diffInit <- ggplot() +
+  geom_line(data=df, aes(x=Iter, y=Value, color=Group)) +
+  scale_color_manual(values = c("Full"="darkorange", "Empty"='steelblue', "Random"='forestgreen')) +
+  xlab('Iteration') + ylab('|G|') +
+  guides(color = guide_legend("Initial Value", direction = 'horizontal', position = 'bottom'))
+# Show / Save
+x11(height = 4, width = 4); plt_Nedge_chain_diffInit
+# pdf("plots/plt_Nedge_chain_diffInit.pdf", height = 4, width = 4); plt_Nedge_chain_diffInit; dev.off()
+
 
 # Compute posterior mean and variance for each PUMA
 means_chain <- lapply(chains, function(x) sapply(x$atoms, function(y) y$mean))
@@ -220,21 +242,20 @@ Gn[Eadj] <- ifelse(plinks[Eadj] >= gamma_graph, 1, NA)
 Gb <- matrix(NA, nrow(plinks), ncol(plinks))
 Gb[Eadj] <- ifelse(plinks[Eadj] < gamma_graph, 1, NA)
 
+# Compute boundary geometry
+bound_sf <- boundary_geometry(Gb, sf_counties)
+
 # Compute neighbouring and boundary adjacency lists
 neigh_list <- apply(Gn, 1, function(x){which(x==1)})
 bound_list <- apply(Gb, 1, function(x){which(x==1)})
 
-# Compute boundary geometry
-bound_sf <- boundary_geometry(bound_list, sf_counties)
-
-
-# L1 distance between areas - V1 ------------------------------------------
+# L1 distance between areas - Local Comparison ----------------------------
 
 # Prepare buffer
 L1 <- data.frame("bounds" = rep(NA, nrow(sf_counties)),
                  "no_bounds" = rep(NA, nrow(sf_counties)))
 
-# Compute L1 distances between densities
+# Compute L1 distances between densities (LOCAL)
 for (i in 1:nrow(sf_counties)) {
   p <- colMeans(estimated_densities[[i]])
   q <- lapply(estimated_densities[adj_list[[i]]], function(x) { colMeans(x) })
@@ -254,26 +275,25 @@ for (i in 1:nrow(sf_counties)) {
   }
 }
 
-# Visualization - Paired boxplots
-L1_v1 <- rbind(data.frame("Dist" = L1$no_bounds, "Type" = "Neigh"),
+# Visualization - boxplot comparison
+L1loc <- rbind(data.frame("Dist" = L1$no_bounds, "Type" = "Neigh"),
                data.frame("Dist" = L1$bounds, "Type" = "Bound")); rm(L1)
-L1_v1$Type <- as.factor(L1_v1$Type)
-L1_v1 <- na.omit(L1_v1)
+L1loc$Type <- as.factor(L1loc$Type)
+L1loc <- na.omit(L1loc)
 # Generate plot
-plt_L1v1 <- ggplot() +
-  geom_boxplot(data = L1_v1, aes(x=Type, y=Dist)) +
-  geom_boxplot(data = L1_v1, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
-  scale_x_discrete(labels = c(bquote(d[FM[i]]), bquote(d[TM[i]]))) + labs(x=NULL,y=NULL) +
+plt_L1loc <- ggplot() +
+  geom_boxplot(data = L1loc, aes(x=Type, y=Dist)) +
+  geom_boxplot(data = L1loc, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
+  scale_x_discrete(labels = c(bquote(d[FM^{loc}]), bquote(d[TM^{loc}]))) + labs(x=NULL,y=NULL) +
   scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
   scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
   theme(text = element_text(size = 14))
-# Show
-x11(height = 3, width = 4); plt_L1v1
-# Save
-# pdf("plots/plt_L1v1.pdf", height = 3, width = 4); plt_L1v1; dev.off()
+# Show / Save
+x11(height = 3, width = 4); plt_L1loc
+# pdf("plots/plt_L1loc.pdf", height = 3, width = 4); plt_L1loc; dev.off()
   
 
-# L1 distance between areas - V2 ------------------------------------------
+# L1 distance between areas - Global Comparison ---------------------------
 
 # Neighbouring pairs
 Gn_up <- Gn; Gn_up[lower.tri(Gn_up)] <- NA
@@ -283,7 +303,7 @@ neigh_pairs <- which(Gn_up == 1, arr.ind = T)
 Gb_up <- Gb; Gb_up[lower.tri(Gb_up)] <- NA
 bound_pairs <- which(Gb_up == 1, arr.ind = T)
 
-# Compute L1 distance between all neighbouring pairs
+# Compute L1 distance between all neighbouring pairs (GLOBAL)
 L1_neigh <- data.frame("Type" = rep("Neigh", nrow(neigh_pairs)),
                        "Dist" = rep(NA, nrow(neigh_pairs)))
 for (i in 1:nrow(neigh_pairs)) {
@@ -291,7 +311,7 @@ for (i in 1:nrow(neigh_pairs)) {
                                   colMeans(estimated_densities[[neigh_pairs[i,2]]]), x)
 }
 
-# Compute L1 distance between all boundary pairs
+# Compute L1 distance between all boundary pairs (GLOBAL)
 L1_bound <- data.frame("Type" = rep("Bound", nrow(bound_pairs)),
                        "Dist" = rep(NA, nrow(bound_pairs)))
 for (i in 1:nrow(bound_pairs)) {
@@ -299,22 +319,20 @@ for (i in 1:nrow(bound_pairs)) {
                                   colMeans(estimated_densities[[bound_pairs[i,2]]]), x)
 }
 
-
-# Visualization - Paired boxplots
-L1_v2 <- rbind(L1_neigh, L1_bound); rm(L1_neigh, L1_bound)
-L1_v2$Type <- as.factor(L1_v2$Type)
+# Visualization - boxplot comparison
+L1glob <- rbind(L1_neigh, L1_bound); rm(L1_neigh, L1_bound)
+L1glob$Type <- as.factor(L1glob$Type)
 # Generate plot
-plt_L1v2 <- ggplot() +
-  geom_boxplot(data = L1_v2, aes(x=Type, y=Dist)) +
-  geom_boxplot(data = L1_v2, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
+plt_L1glob <- ggplot() +
+  geom_boxplot(data = L1glob, aes(x=Type, y=Dist)) +
+  geom_boxplot(data = L1glob, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
   scale_x_discrete(labels = c(bquote(d[FM]), bquote(d[TM]))) + labs(x=NULL,y=NULL) +
   scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
   scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
   theme(text = element_text(size = 14))
-# Show
-x11(height = 3, width = 4); plt_L1v2
-# Save
-# pdf("plots/plt_L1v2.pdf", height = 3, width = 4); plt_L1v2; dev.off()
+# Show / Save
+x11(height = 3, width = 4); plt_L1glob
+# pdf("plots/plt_L1glob.pdf", height = 3, width = 4); plt_L1glob; dev.off()
 
 cat("Posterior analysis has been completed\n")
 
@@ -333,8 +351,10 @@ x11(height = 4, width = 4); plot_postH
 text <- data.frame("PUMA" = sf_counties$PUMA,  st_coordinates(st_centroid(st_geometry(sf_counties))))
 # Generate
 plt_pumanames <- ggplot() + 
-  geom_sf(data = sf_counties) + 
-  geom_text(data = text, aes(x = X, y = Y, label=PUMA), check_overlap = TRUE)
+  geom_sf(data = sf_counties, aes(fill=post_mean)) +
+  geom_label_repel(data = text, aes(x = X, y = Y, label=PUMA), max.overlaps = 50) +
+#  geom_text(data = text, aes(x = X, y = Y, label=PUMA), check_overlap = TRUE) +
+  geom_sf(data = bound_sf, col='darkred', linewidth = 0.3, inherit.aes = FALSE)
 # Show
 x11(height = 4, width = 4); plt_pumanames
 
@@ -351,9 +371,8 @@ plt_plinks <- ggplot() +
                                               title.position = "bottom", title.hjust = 0.5, label.vjust = 0.5)) +
   geom_tile(data = Gb_df, aes(x=x,y=y), fill=NA, col='darkred', linewidth=0.5) +
   theme_void() + theme(legend.position = "bottom") + coord_equal()
-# Show
+# Show / Save
 x11(height = 4, width = 4); plt_plinks
-# Save
 # pdf("plots/plt_plinks.pdf", height = 4, width = 4); plt_plinks; dev.off()
 
 # # PLOT - Posterior Summary graph
@@ -370,7 +389,6 @@ x11(height = 4, width = 4); plt_plinks
 #   theme_void() + theme(legend.position = "bottom") + coord_equal()
 # # Show
 # plt_Gsum
-
 
 # # PLOT - Posterior boundary graph
 # df <- reshape2::melt(G_b, c("x","y"), value.name = "Val")
@@ -396,13 +414,12 @@ bound_sf_3857 <- st_transform(bound_sf, 3857)
 plt_boundaries_mean <- ggmap(counties_map) +
   geom_sf(data = sf_counties_3857, aes(fill=post_mean), col='gray25', alpha = 0.6, inherit.aes = F) +
   scale_fill_gradient(low = 'steelblue', high = 'darkorange',
-                      guide = guide_colorbar("Post. Mean", direction = "horizontal", barwidth=unit(2.5,"in"),
+                      guide = guide_colorbar("Post. Mean", direction = "horizontal", barwidth=unit(3,"in"),
                                              title.position = "bottom", title.hjust = 0.5, label.vjust = 0.5)) +
   geom_sf(data = bound_sf, col='darkred', linewidth = 0.3, inherit.aes = FALSE) +
   theme_void() + theme(legend.position = "bottom")
-# Show
+# Show / Save
 x11(height = 4, width = 4); plt_boundaries_mean
-# Save
 # pdf("plots/plt_boundaries_mean.pdf", height = 4, width = 4); plt_boundaries_mean; dev.off()
 
 
@@ -411,13 +428,12 @@ x11(height = 4, width = 4); plt_boundaries_mean
 plt_boundaries_var <- ggmap(counties_map) +
   geom_sf(data = sf_counties_3857, aes(fill=post_var), col='gray25', alpha = 0.6, inherit.aes = FALSE) +
   scale_fill_gradient(low = 'steelblue', high = 'darkorange',
-                      guide = guide_colorbar("Post. Variance", direction = "horizontal", barwidth=unit(2.5,"in"),
+                      guide = guide_colorbar("Post. Variance", direction = "horizontal", barwidth=unit(3,"in"),
                                              title.position = "bottom", title.hjust = 0.5, label.vjust = 0.5)) +
   geom_sf(data = bound_sf, col='darkred', linewidth = 0.3, inherit.aes = FALSE) +
   theme_void() + theme(legend.position = "bottom")
-# Show
+# Show / Save
 x11(height = 4, width = 4); plt_boundaries_var
-# Save
 # pdf("plots/plt_boundaries_var.pdf", height = 4, width = 4); plt_boundaries_var; dev.off()
 
 
@@ -425,13 +441,12 @@ x11(height = 4, width = 4); plt_boundaries_var
 plt_emp_mean <- ggmap(counties_map) +
   geom_sf(data = sf_counties_3857, aes(fill=emp_mean), col='gray25', alpha = 0.6, inherit.aes = F) +
   scale_fill_gradient(low = 'steelblue', high = 'darkorange',
-                      guide = guide_colourbar(title = "Empirical Mean", direction = "horizontal", barwidth = unit(2.5, "in"),
+                      guide = guide_colourbar(title = "Empirical Mean", direction = "horizontal", barwidth = unit(3, "in"),
                                               title.position = "bottom", title.hjust = 0.5)) +
   theme_void() + theme(legend.position = "bottom")
-# Show
+# Show / Save
 x11(height = 4, width = 4); plt_emp_mean
-# Save
-pdf("plots/plt_emp_mean.pdf", height = 4, width = 4); plt_emp_mean; dev.off()
+# pdf("plots/plt_emp_mean.pdf", height = 4, width = 4); plt_emp_mean; dev.off()
 
 # PLOT - Empirical variance in each PUMA on the map
 plt_emp_var <- ggmap(counties_map) +
@@ -440,14 +455,14 @@ plt_emp_var <- ggmap(counties_map) +
                       guide = guide_colourbar(title = "Empirical Variance", direction = "horizontal", barwidth = unit(3, "in"),
                                               title.position = "bottom", title.hjust = 0.5)) +
   theme_void() + theme(legend.position = "bottom")
-# Show
+# Show / Save
 x11(height = 4, width = 4); plt_emp_var
-# Save
-pdf("plots/plt_emp_var.pdf", height = 4, width = 4); plt_emp_var; dev.off()
+# pdf("plots/plt_emp_var.pdf", height = 4, width = 4); plt_emp_var; dev.off()
 
 
 # PLOT - Empirical density histogram in bordering areas
-areas <- c(30,46,31); areas_names <- c("Hancock Park & Mid-Wilshire", "U.S.C. & Exposition Park", "West Hollywood & Beverly Hills")
+areas <- c(30,46,45); areas_names <- c("Hancock Park & Mid-Wilshire", "U.S.C. & Exposition Park", "East Vernon")
+# areas <- c(30,46,31); areas_names <- c("Hancock Park & Mid-Wilshire", "U.S.C. & Exposition Park", "West Hollywood & Beverly Hills")
 # Auxiliary dataframes
 df_hist <- data.frame("logPINCP"=numeric(0), "PUMA"=numeric(0))
 df_dens <- data.frame("x"=numeric(0), "y"=numeric(0), "PUMA"=numeric(0))
@@ -460,19 +475,18 @@ for (i in 1:length(areas)) {
                        "PUMA" = rep(areas_names[i], length(x)))
   df_dens <- rbind(df_dens, to_add)
 }
-df_hist$PUMA <- factor(df_hist$PUMA, levels = c("U.S.C. & Exposition Park", "Hancock Park & Mid-Wilshire", "West Hollywood & Beverly Hills"))
-df_dens$PUMA <- factor(df_dens$PUMA, levels = c("U.S.C. & Exposition Park", "Hancock Park & Mid-Wilshire", "West Hollywood & Beverly Hills"))
+df_hist$PUMA <- factor(df_hist$PUMA, levels = areas_names)# , levels = c("03730", "03746", "03745")) # , levels = c("U.S.C. & Exposition Park", "Hancock Park & Mid-Wilshire", "West Hollywood & Beverly Hills"))
+df_dens$PUMA <- factor(df_dens$PUMA, levels = areas_names)# , levels = c("03730", "03746", "03745")) #, levels = c("U.S.C. & Exposition Park", "Hancock Park & Mid-Wilshire", "West Hollywood & Beverly Hills"))
 # Generate plot
 plt_DensCompare <- ggplot() +
   geom_density_ridges(data = df_hist, aes(x=logPINCP, y=PUMA, height=after_stat(ndensity), fill=PUMA, color=PUMA, scale=1.5), stat="binline", bins=10, alpha=0.4, show.legend = F) +
-  geom_ridgeline(data=df_dens, aes(x=x, y=PUMA, height=y, color=PUMA), scale=4.5, fill=NA, linewidth = 1.2, show.legend = F) +#, size=1.2, show.legend = F) +
-  scale_y_discrete(expand = c(0.05,0,0.9,0)) +
+  geom_ridgeline(data=df_dens, aes(x=x, y=PUMA, height=y, color=PUMA), scale=4.5, fill=NA, linewidth = 1.2, show.legend = F) + #, size=1.2, show.legend = F) +
+  scale_y_discrete(expand = c(0.05,0,1,0)) +
   scale_color_manual(NULL, values = c('darkorange', "steelblue", 'forestgreen')) +
   scale_fill_manual(NULL, values = c('darkorange', "steelblue", 'forestgreen')) +
   xlab("log(PINCP)") + ylab("Density") + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
-# Show
+# Show / Save
 x11(height = 4, width = 4); plt_DensCompare
-# Save
 # pdf("plots/plt_DensCompare.pdf", height = 4, width = 4); plt_DensCompare; dev.off()
 
 
@@ -518,21 +532,23 @@ cat(sprintf("Plots have been generated in file: %s", pdf_out))
 
 # Map
 zoom_bbox <- unname(st_bbox(st_transform(sf_counties[areas,], 4326)))
+xc <- zoom_bbox[1] + .5*(zoom_bbox[3]-zoom_bbox[1])
+yc <- zoom_bbox[2] + .5*(zoom_bbox[4]-zoom_bbox[2])
+zoom_bbox <- c(xc - 0.075, yc - 0.075, xc + 0.075, yc + 0.075)
 zoom_map <- sf_ggmap(get_map(zoom_bbox, maptype = "stamen_terrain", source = "stadia", crop = F))
 # Labels
 names_zoom <- data.frame("PUMA" = areas_names, st_coordinates(st_centroid(st_geometry(sf_counties_3857[areas, ]))))
-names_zoom$PUMA <- factor(names_zoom$PUMA, levels = c("U.S.C. & Exposition Park", "Hancock Park & Mid-Wilshire", "West Hollywood & Beverly Hills"))
+names_zoom$PUMA <- factor(names_zoom$PUMA, levels = areas_names)#, levels = c("U.S.C. & Exposition Park", "Hancock Park & Mid-Wilshire", "West Hollywood & Beverly Hills"))
 # Generate
 plt_zoom <- ggmap(zoom_map) +
   geom_sf(data = sf_counties_3857, fill=NA, col='gray25', linewidth=0.7, inherit.aes = F) +
   geom_sf(data = sf_counties_3857[areas, ], aes(fill=PUMA), col='gray25', alpha = 0.5, linewidth = 1.4, show.legend = F, inherit.aes = F) +
   geom_sf(data = bound_sf_3857, fill=NA, col='darkred', linewidth=1.4, inherit.aes = F) +
-  scale_fill_manual(values = c('steelblue', 'forestgreen', 'darkorange')) +
+  scale_fill_manual(values = c("03730"='darkorange',"03746"='steelblue',"03745"='forestgreen')) +
   geom_label_repel(data = names_zoom, aes(x=X, y=Y, label=PUMA, color=PUMA), inherit.aes = F, show.legend = F) +
   scale_color_manual(values = c('darkorange', 'steelblue', 'forestgreen')) + theme_void()
-# Show
+# Show / Save
 x11(height = 4, width = 4); plt_zoom
-# Save
 # pdf("plots/plt_zoom.pdf", height = 4, width = 4); plt_zoom; dev.off()
 
 # 1 - Info interessanti sui crimini e i boundaries che ho trovato ----

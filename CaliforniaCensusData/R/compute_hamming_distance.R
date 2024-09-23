@@ -46,8 +46,9 @@ chain_files <- list.files("output/H_RJ/rho_0.95", recursive = F, full.names = T)
 # Compute std hamming distances between all pairs
 std_hamming_distances <- vector(length = choose(length(chain_files),2)); k <- 1
 for (i in 1:(length(chain_files)-1)) {
+  Gb_lhs <- get_Gb(chain_files[i],W)
   for (j in (i+1):length(chain_files)) {
-    std_hamming_distances[k] <- compute_std_hamming_distance(Gb_lhs, get_Gb(chain_files[j]))
+    std_hamming_distances[k] <- compute_std_hamming_distance(Gb_lhs, get_Gb(chain_files[j],W))
     k <- k+1
   }
 }
