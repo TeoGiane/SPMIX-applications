@@ -54,4 +54,6 @@ for (i in 1:(length(chain_files)-1)) {
 }
 
 # Return summary table
-summary(std_hamming_distances)
+SHD <- data.frame("SHD" = std_hamming_distances)
+save(SHD, file = "output/std_hamming_distances.dat")
+# summary(std_hamming_distances)
