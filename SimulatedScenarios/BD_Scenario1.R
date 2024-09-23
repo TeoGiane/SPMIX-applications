@@ -350,12 +350,64 @@ plt_areasdens[[1]]; plt_areasdens[[2]]
 
 # ESS, WAIC, robe per review ----------------------------------------------
 
+# PLOT - Traceplot of p
 p_chain <- sapply(chains, function(x){x$p})
+df <- data.frame("Iter"=1:length(p_chain), "Value"=p_chain)
+# Generate plot
+plt_p_chain <- ggplot() +
+  geom_line(data = df, aes(x = Iter, y = Value)) +
+  xlab('Iteration') + ylab('p')
+# Show / Save
+# x11(height = 4, width = 4); plt_p_chain
+pdf("plots/plt_p_chain.pdf", height = 4, width = 4); plt_p_chain; dev.off()
+
+# ESS of p
 mcmcse::ess(p_chain)
 
-Nedge_chain <- sapply(G_chain, sum)
+# PLOT - Traceplot of |G|
+Nedge_chain <- sapply(G_chain, function(x){sum(x[upper.tri(x)])})
+df <- data.frame("Iter"=1:length(Nedge_chain), "Value"=Nedge_chain)
+# Generate plot
+plt_Nedge_chain <- ggplot() +
+  geom_line(data = df, aes(x = Iter, y = Value)) +
+  xlab('Iteration') + ylab('|G|')
+# Show / Save
+# x11(height = 4, width = 4); plt_Nedge_chain
+pdf("plots/plt_Nedge_chain.pdf", height = 4, width = 4); plt_Nedge_chain; dev.off()
+
+# ESS of |G|
 mcmcse::ess(Nedge_chain)
 
+# PLOT - Traceplot of sigma^2
 sigma_chain <- sapply(chains, function(x){x$Sigma$data[1]})
+df <- data.frame("Iter"=1:length(sigma_chain), "Value"=sigma_chain)
+# Generate plot
+plt_sigma_chain <- ggplot() +
+  geom_line(data = df, aes(x = Iter, y = Value)) +
+  xlab('Iteration') + ylab(bquote(sigma^2))
+# Show / Save
+# x11(height = 4, width = 4); plt_sigma_chain
+pdf("plots/plt_sigma_chain.pdf", height = 4, width = 4); plt_sigma_chain; dev.off()
 
+# ESS of sigma^2
+mcmcse::ess(sigma_chain)
+
+# TODO: improve doc for WAIC
 tmp <- ComputePosteriorLPDF(data, chains, verbose = T)
+
+# Plot - |G| with different initializations (DA SISTEMARE)
+load("output/Nedge_chain_startempty.dat")
+df <- data.frame("Iter" = 1:length(Nedge_chain), "Value"=Nedge_chain, "Group"=rep("Empty", length(Nedge_chain)))
+load("output/Nedge_chain_startfull.dat")
+df <- rbind(df, data.frame("Iter" = 1:length(Nedge_chain), "Value"=Nedge_chain, "Group"=rep("Full", length(Nedge_chain))))
+load("output/Nedge_chain_startrandom.dat")
+df <- rbind(df, data.frame("Iter" = 1:length(Nedge_chain), "Value"=Nedge_chain, "Group"=rep("Random", length(Nedge_chain))))
+#Generate plot
+plt_Nedge_chain_diffInit <- ggplot() +
+  geom_line(data=df, aes(x=Iter, y=Value, color=Group)) +
+  scale_color_manual(values = c("Full"="darkorange", "Empty"='steelblue', "Random"='forestgreen')) +
+  xlab('Iteration') + ylab('|G|') +
+  guides(color = guide_legend("Initial Value", direction = 'horizontal', position = 'bottom'))
+# Show / Save
+# x11(height = 4, width = 4); plt_Nedge_chain_diffInit
+pdf("plots/plt_Nedge_chain_diffInit.pdf", height = 4, width = 4); plt_Nedge_chain_diffInit; dev.off()
