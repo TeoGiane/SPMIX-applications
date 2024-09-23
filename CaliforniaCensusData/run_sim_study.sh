@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Define number of datasets
-NSIM=10
+NSIM=15
 
 # Set values for H and RHO
 H=(RJ)
-RHO=(0 0.9 0.95 0.99)
+RHO=(0.95)
 
 # Make log folders if not present
 for h in ${H[@]}; do
