@@ -81,8 +81,8 @@ params_template =
 
   p0_params {
     mu0: 10
-    a: 12
-    b: 11
+    a: 4
+    b: 4
     lam_: 0.1
   }
 
@@ -92,8 +92,8 @@ params_template =
 
   sigma {
     inv_gamma_prior {
-      alpha: 6
-      beta: 6
+      alpha: 4
+      beta: 4
     }
   }
 
