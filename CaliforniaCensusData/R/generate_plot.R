@@ -593,9 +593,8 @@ Gb_la[which(Gb_la == 0, arr.ind=T)] <- NA
 
 
 df <- read.csv("data/explain_boundaries/2020_LACounty_Crimes_dataset.csv")
-sf <- st_as_sf(df, coords = c("LONGITUDE", "LATITUDE")) %>%
-  st_set_crs(4326) %>% st_transform(3857) %>%
-  mutate(CATEGORY = as.factor(CATEGORY))
+sf <- st_as_sf(df, coords = c("LONGITUDE", "LATITUDE"), crs = 4326) %>%
+  st_transform(3857) %>% mutate(CATEGORY = as.factor(CATEGORY))
 
 # plt_boundaries_mean <- ggplot() +
 #   geom_sf(data = sf_counties_3857, aes(fill=post_mean), col='gray25', alpha = 0.6, inherit.aes = F) +
