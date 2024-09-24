@@ -1,8 +1,6 @@
 # Import required packages
 suppressMessages(library("dplyr"))
 suppressMessages(library("ggplot2"))
-# suppressMessages(library("ggridges"))
-# suppressMessages(library("ggrepel"))
 suppressMessages(library("ggmap"))
 suppressMessages(library("sf"))
 suppressMessages(library("spdep"))
@@ -180,12 +178,6 @@ sf_insurance <- read_sf("data/explain_boundaries/Health_Insurance_(census_tract)
   group_by(csa) %>%
   summarise(UNINSURED = mean(uninsure_1, na.rm = T))
 
-# bottom_colorbar <- function(title, length){
-#   out <- guide_colorbar(title, direction = "horizontal", barwidth = unit(length, "in"), barheight = unit(0.15, "in"),
-#                         title.position = "bottom", title.vjust = 0.5, label.vjust = 0.5)
-#   return(out)
-# }
-
 # PLOT- % of people without medical insurance
 sf_la_3857 <- st_transform(sf_la, 3857)
 sf_insurance_3857 <- st_transform(sf_insurance, 3857)
@@ -202,5 +194,163 @@ plt_insurance <- ggmap(la_map) +
                              title.position = "bottom", title.hjust = 0.5, barwidth = unit(3,"in"), barheight = unit(0.12, "in")),
          color = "none") + theme_void()
 pdf("plots/plt_NoInsurance.pdf", height = 4, width = 4); plt_insurance; dev.off()
+
+###########################################################################
+
+###########################################################################
+# OLD STUFF TO REMOVE -----------------------------------------------------
+
+# # 1 - Info interessanti sui crimini e i boundaries che ho trovato
+# 
+# sf_la <- sf_counties[grep("Los Angeles County", sf_counties$Name), ]
+# sf_la_3857 <- st_transform(sf_la, 3857)
+# la_bbox <- unname(st_bbox(st_transform(sf_la, 4326)))
+# # Crop islands
+# la_bbox[2] <- la_bbox[4] - (la_bbox[3] - la_bbox[1])
+# la_map <- sf_ggmap(get_map(la_bbox, maptype = "stamen_terrain", source = "stadia", crop = F))
+# 
+# # Select W for LA county
+# selected_rowcols <- which(sf_counties$Name %in% sf_la$Name)
+# W_la <- W[selected_rowcols, ]
+# W_la <- W_la[, selected_rowcols]
+# 
+# # Compute not admissible edges
+# Eadj_la <- which(W_la == 1, arr.ind = TRUE)
+# Eb_la <- which(W_la == 0, arr.ind = TRUE)
+# 
+# # Select plinks for LA county
+# plinks_la <- plinks[selected_rowcols, ]
+# plinks_la <- plinks_la[, selected_rowcols]
+# 
+# # Compute neighbouring graph for LA
+# Gn_la <- matrix(0, nrow(plinks_la), ncol(plinks_la))
+# Gn_la[Eadj_la] <- ifelse(plinks_la[Eadj_la] >= 0.5, 1, 0)
+# 
+# # Compute boundary graph for LA
+# Gb_la <- matrix(0, nrow(plinks_la), ncol(plinks_la))
+# Gb_la[Eadj_la] <- ifelse(plinks_la[Eadj_la] < 0.5, 1, 0)
+# 
+# # Compute boundary adjacency list and geometry for LA
+# bound_list_la <- spdep::mat2listw(Gb_la, style = "B")$neighbours
+# bound_sf_la <- boundary_geometry(bound_list_la, sf_la)
+# bound_sf_la_3857 <- st_transform(bound_sf_la, 3857)
+# 
+# # Drop zeros
+# plinks_la[Eb_la] <- NA
+# Gn_la[which(Gn_la == 0, arr.ind=T)] <- NA
+# Gb_la[which(Gb_la == 0, arr.ind=T)] <- NA
+# 
+# 
+# df <- read.csv("data/explain_boundaries/2020_LACounty_Crimes_dataset.csv")
+# sf <- st_as_sf(df, coords = c("LONGITUDE", "LATITUDE"), crs = 4326) %>%
+#   st_transform(3857) %>% mutate(CATEGORY = as.factor(CATEGORY))
+# 
+# # plt_boundaries_mean <- ggplot() +
+# #   geom_sf(data = sf_counties_3857, aes(fill=post_mean), col='gray25', alpha = 0.6, inherit.aes = F) +
+# #   scale_fill_gradient(low = 'steelblue', high = 'darkorange') +
+# #   geom_sf(data = bound_sf, col='darkred', linewidth = 0.3, inherit.aes = F) +
+# #   theme_void() + theme(legend.position = "bottom") + 
+# #   guides(fill = guide_colourbar(title = "Post. Mean", direction = "horizontal", barwidth = unit(2.5, "in"),
+# #                                 title.position = "bottom", title.hjust = 0.5))
+# 
+# categories <- c("DISORDERLY CONDUCT", "LIQUOR LAWS", "RECEIVING STOLEN PROPERTY", "VAGRANCY")
+# sf_crimes <- sf[sf$CATEGORY %in% categories, ]
+# 
+# plt_crimescat <- ggmap(la_map) +
+#   geom_sf(data = sf_la_3857, col='gray25', linewidth=0.25, fill='white', alpha=0.6, inherit.aes=F) +
+#   geom_sf(data = sf_crimes, aes(color=CATEGORY), size=0.75, alpha = 0.5, inherit.aes=F) +
+#   geom_sf(data = bound_sf_la_3857, col='darkred', linewidth=0.5, inherit.aes=F) +
+#   scale_color_manual(NULL,
+#                      values = c("steelblue", 'darkorange', 'lightgreen', 'salmon'),
+#                      labels = c("Disorderly Conduct", "Liquor Laws", "Recieving Stolen Property", "Vagrancy"),
+#                      guide = bottom_legend(NULL,2)) +
+#   theme_void() + theme(legend.position = "bottom")
+#   # scale_color_manual(NULL, values = c("white",'darkred')) + guides(color = guide_legend(override.aes = list(position="none")))
+#   # guides(color = bottom_legend(NULL, 2)) + theme_void() + theme(legend.position = "bottom")
+# pdf("plots/plt_CrimesCategories.pdf", height = 4, width = 3.5); plt_crimescat; dev.off()
+# # x11(height = 4, width = 3.5); plt_crimescat
+# 
+# 
+# for (cat in levels(sf$CATEGORY)) {
+#   print(plt_boundaries_mean + 
+#     geom_sf(data = sf[sf$CATEGORY == cat, ], inherit.aes = F) +
+#     geom_sf(data = bound_sf, col='darkred', linewidth = 0.5, inherit.aes = F) +
+#     ggtitle(cat))
+# }
+# 
+# plt_gangcrimes <- ggmap(counties_map) +
+#   geom_sf(data = sf_counties_3857, col='gray25', linewidth=0.25, fill='white', alpha=0.6, inherit.aes=F) +
+#   geom_sf(data = sf[sf$GANG_RELATED == "YES", ], aes(col=GANG_RELATED), inherit.aes=F) +
+#   geom_sf(data = bound_sf, col='darkred', linewidth = 0.5, inherit.aes=F) +
+#   guides(color = bottom_legend(NULL, 2)) + theme_void() + theme(legend.position = "bottom")
+# pdf("plots/plt_GangCrimes.pdf", height = 5, width = 4); plt_gangcrimes; dev.off()
+# # x11(height = 5, width = 4); plt_gangcrimes
+# 
+# # 2 - Percentuale di persone senza assicurazione medica
+# 
+# sf <- read_sf("data/explain_boundaries/Health_Insurance_(census_tract)/Health_Insurance_(census_tract).shp") %>%
+#   st_transform(3857) %>%
+#   group_by(csa) %>%
+#   summarise(uninsured = mean(uninsure_1, na.rm = T))
+# 
+# bottom_colorbar <- function(title, length){
+#   out <- guide_colorbar(title, direction = "horizontal", barwidth = unit(length, "in"), barheight = unit(0.15, "in"),
+#                         title.position = "bottom", title.vjust = 0.5, label.vjust = 0.5)
+#   return(out)
+# }
+# 
+# plt_insurance <- ggmap(la_map) +
+#   geom_sf(data = sf_la_3857, col=NA, fill='white', alpha=0.6, inherit.aes=F) +
+#   geom_sf(data = sf, aes(fill=uninsured), col=NA, inherit.aes=F) +
+#   geom_sf(data = sf_la_3857, col="gray25", fill=NA, linewidth=0.25, inherit.aes=F) +
+#   geom_sf(data = bound_sf_la_3857, col='darkred', linewidth=0.5, fill=NA, inherit.aes=F) +
+#   scale_fill_gradient(low="steelblue", high="darkorange",
+#                       guide = bottom_colorbar("Population w/o Health Insurance (%)", 2.5)) +
+#   theme_void() + theme(legend.position = "bottom")
+# pdf("plots/plt_NoInsurance.pdf", height = 4, width = 3.5); plt_insurance; dev.off()
+# # x11(height = 4, width = 3.5); plt_insurance
+# #png("people_without_insurance.png", height = 5, width = 5, units = "in", res = 200); plt_insurance; dev.off()
+# 
+# x11(height = 4, width = 7); gridExtra::grid.arrange(plt_crimescat, plt_insurance, ncol=2)
+# 
+# # 3 - Impatto delle incarcerazioni: numero di arresti della LAPD e della LASD nel 2020
+# 
+# sf <- read_sf("data/Incarceration_Impact_(neighborhood)/Incarceration_Impact__neighborhood_.shp") %>%
+#   st_zm() %>% st_transform(3857)
+# 
+# plt_arrests <- ggmap(counties_map) +
+#   geom_sf(data = sf, aes(fill=Combo_Arre), col=NA, inherit.aes=F) +
+#   geom_sf(data = sf_counties_3857, col = "gray25", fill=NA, linewidth=0.25, inherit.aes=F) +
+#   geom_sf(data = bound_sf_3857, col='darkred', linewidth=0.5, fill=NA, inherit.aes=F) +
+#   scale_fill_gradient(low="steelblue", high="darkorange",
+#                       guide = bottom_colorbar("N° of Total Arrests", 3)) +
+#   theme_void() + theme(legend.position = "bottom")
+# png("total_arrests.png", height = 5, width = 5, units = "in", res = 200); plt_arrests; dev.off()
+# 
+# # 4 - Potrebbe essere interessante: below Count and Percent below federal poverty level (fpl) and below 200 percent fpl.
+# 
+# sf <- read_sf("data/Below_Poverty_(census_tract)/Below_Poverty__census_tract_.shp") %>%
+#   st_transform(3857) %>%
+#   group_by(csa) %>%
+#   summarise(below_poverty = mean(below_fpl_, na.rm = T),
+#             below_200poverty = mean(below_20_1, na.rm = T))
+#   
+# plt_fpl <- ggmap(counties_map) +
+#   geom_sf(data = sf, aes(fill=below_poverty), col=NA, inherit.aes=F) +
+#   geom_sf(data = sf_counties_3857, col = "gray25", linewidth=0.25, fill=NA, inherit.aes=F) +
+#   geom_sf(data = bound_sf_3857, col='darkred', linewidth=0.5, fill=NA, inherit.aes=F) +
+#   scale_fill_gradient(low="steelblue", high="darkorange",
+#                       guide = bottom_colorbar("People Below Federal Poverty Level (%)", 3)) +
+#   theme_void() + theme(legend.position = "bottom")
+# png("people_below_fpl.png", height = 5, width = 5, units = "in", res = 200); plt_fpl; dev.off()
+# 
+# plt_200fpl <- ggmap(counties_map) +
+#   geom_sf(data = sf, aes(fill=below_200poverty), col=NA, inherit.aes=F) +
+#   geom_sf(data = sf_counties_3857, col = "gray25", linewidth=0.25, fill=NA, inherit.aes=F) +
+#   geom_sf(data = bound_sf_3857, col='darkred', linewidth=0.5, fill=NA, inherit.aes=F) +
+#   scale_fill_gradient(low="steelblue", high="darkorange",
+#                       guide = bottom_colorbar("People 200% Below Federal Poverty Level (%)", 3)) +
+#   theme_void() + theme(legend.position = "bottom")
+# png("people_below_200fpl.png", height = 5, width = 5, units = "in", res = 200); plt_200fpl; dev.off()
 
 ###########################################################################
