@@ -9,7 +9,7 @@ opt_parser <- add_argument(opt_parser, arg = "--num-components", short = "-c", d
                            help = "Value for the number of components, or 'RJ' if the reverisble jump sampler is considered")
 opt_parser <- add_argument(opt_parser, arg = "--rho", short = "-r", default = "0.95",
                            help = "Value for rho parameter")
-opt_parser <- add_argument(opt_parser, arg = "--output-folder", short = "-o", default = "summary",
+opt_parser <- add_argument(opt_parser, arg = "--output-folder", short = "-o", default = "summary/mean_est_dens",
                            help = "Relative path to the output folder")
 opt_parser <- add_argument(opt_parser, arg = "num-sample",
                            help = "The number of subsample to consider")
@@ -29,7 +29,6 @@ num_sample <- as.integer(extra_args$num_sample)
 
 # Check if data file exists
 data_file <- file.path(getwd(), "data", sprintf("data_%03d.dat",num_sample))
-# data_file <- file.path(getwd(),"data","counties-pumas","counties-pumas.shp")
 if(!file.exists(data_file)){stop(sprintf("'%s' does not exists", data_file))}
 data_file <- normalizePath(data_file)
 cat(sprintf("Data File: %s\n", data_file)) # Log
