@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define number of datasets
-NSIM=15
+NSIM=100
 
 # Set values for H and RHO
 H=(RJ)
@@ -15,7 +15,7 @@ for h in ${H[@]}; do
 done
 
 # Execute run_sampler.R in parallel via GNU parallel
-parallel -j 15 \
+parallel -j 0 \
   'printf -v n "%03d" {1}; Rscript --vanilla ./R/run_sampler.R -c {2} -r {3} -o ./output/H_{2}/rho_{3}/chain_$n.dat ./data/data_$n.dat &> ./log/H_{2}/rho_{3}/run_sampler_$n.log' \
   ::: $(eval echo {1..$NSIM}) ::: ${H[@]} ::: ${RHO[@]}
 
