@@ -15,7 +15,7 @@ for h in ${H[@]}; do
 done
 
 # Execute run_sampler.R in parallel via GNU parallel
-parallel -j 0 \
+parallel -j 4 \
   'printf -v n "%03d" {1}; Rscript --vanilla ./R/compute_estimated_densities.R -c {2} -r {3} -o ./summary/mean_est_dens {1} &> ./log/H_{2}/rho_{3}/compute_estimated_densitites_$n.log' \
   ::: $(eval echo {1..$NSIM}) ::: ${H[@]} ::: ${RHO[@]}
 
