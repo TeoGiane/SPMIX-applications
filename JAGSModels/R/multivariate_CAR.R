@@ -81,7 +81,7 @@ MCAR_data <- list("Y"=Y,
 MCAR_model <- jags.model("bug/multivariate_CAR.bug", data=MCAR_data, n.chains=2)
 
 # Run MCMC
-MCAR_params <- c("G", "p", "tau")
+MCAR_params <- c("W", "G", "p", "tau")
 MCAR_fit <- jags.samples(MCAR_model, variable.names = MCAR_params, n.iter = 1000, thin = 2)
 
 # Store MCAR_fit
