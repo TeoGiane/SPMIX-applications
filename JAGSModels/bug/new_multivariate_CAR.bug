@@ -1,0 +1,31 @@
+model {
+  /* Prior for G (+ F matrix) */
+  for(i in 1:I) {
+    G[i,i] = 0
+    for(k in (i+1):I) {
+      G[i,k] ~ dbern(p*W[i,k])
+      G[k,i] = G[i,k]
+      F[i,k] = 0
+      F[k,i] = 0
+    }
+    F[i,i] = rho*sum(G[i,]) + (1-rho)
+  }
+  p ~ dbeta(abeta,bbeta)
+    
+  /* MCAR Prior for psi */
+  mu0_vec = rep(mu0,I)
+  for(q in 1:Ncov) {
+    psi[((q-1)*I+1):(q*I)] ~ dmnorm(mu0_vec, (F-rho*G)/one_over_sigmasq)
+  }
+  
+  /* Prior for 1/sigma^2 */
+  one_over_sigmasq ~ dgamma(2, 2)
+  
+  /* Prior on 1/tau^2 */
+  one_over_tausq ~ dgamma(2, 2)
+  
+  /* Likelihood */
+  for(i in 1:(I*Ncov)) {
+    Y[i] ~ dnorm(psi[i], one_over_tausq)
+  }
+}
