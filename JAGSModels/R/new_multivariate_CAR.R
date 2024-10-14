@@ -30,12 +30,12 @@ adj_list <- poly2nb(sf_counties, queen = FALSE)
 W <- nb2mat(adj_list, style = "B")
 
 # Import data
-load("data/data_001.dat")
+load("data/full_dataset.dat")
 
 # Get number of areas and prior hypers
 numGroups <- length(data)
-abeta <- numGroups
-bbeta <- 2
+abeta <- 2
+bbeta <- numGroups
 
 # # Generate shape file from scratch
 # numGroups <- 36
