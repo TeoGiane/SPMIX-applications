@@ -63,6 +63,11 @@ clean_data <- raw_data %>%
   group_split() %>%
   as.list()
 
+# Save full dataset as data
+data <- lapply(clean_data, function(df){df$LPINCP})
+filename <- file.path(data_dir,"full_dataset.dat")
+save(data, file = filename); rm(data)
+
 # Check if subsample size is valid
 if(extra_args$subsample_size > min(sapply(clean_data, nrow))){
   msg <- sprintf("'--subsample-size' parameter not valid. Set a value <= %d",
