@@ -83,7 +83,7 @@ adj_list <- poly2nb(sf_counties, queen = FALSE)
 W <- nb2mat(adj_list, style = "B")
 
 # Import data
-load("data/data_001.dat")
+load("data/full_dataset.dat")
 
 # Set beta parameters
 abeta <- 2
@@ -94,7 +94,7 @@ filename <- file.path(getwd(), "output", sprintf("MCAR_fit-a%gb%g.dat", abeta, b
 load(filename)
 
 # 100 Iterations of burnin
-burnin <- 100
+burnin <- 0
 p_chain <- lapply(as.mcmc.list(MCAR_fit$p), function(chain){ as.vector(chain[(burnin+1):dim(chain)[1],1:dim(chain)[2]]) })
 p_chain <- do.call(c, p_chain)
 sigmasq_chain <- lapply(as.mcmc.list(MCAR_fit$one_over_sigmasq), function(chain){ as.vector(chain[(burnin+1):dim(chain)[1],1:dim(chain)[2]]) })
