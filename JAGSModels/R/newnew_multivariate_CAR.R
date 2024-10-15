@@ -98,7 +98,7 @@ MCAR_model <- jags.model("bug/new_multivariate_CAR.bug", data=MCAR_data, n.chain
 
 # Run MCMC
 MCAR_params <- c("psi", "G", "p", "one_over_sigmasq", "one_over_tausq")
-MCAR_fit <- jags.samples(MCAR_model, variable.names = MCAR_params, n.iter = 100, thin = 1)
+MCAR_fit <- jags.samples(MCAR_model, variable.names = MCAR_params, n.iter = 1000, thin = 1)
 
 # Store MCAR_fit
 filename <- sprintf("output/MCAR_fit-a%gb%g.dat", abeta, bbeta)
