@@ -81,7 +81,7 @@ MCAR_model <- jags.model("bug/multivariate_CAR_marginalized.bug", data=MCAR_data
 
 # Run MCMC
 MCAR_params <- c("G", "p", "one_over_sigmasq", "one_over_tausq")
-MCAR_fit <- jags.samples(MCAR_model, variable.names = MCAR_params, n.iter = 100, thin = 1)
+MCAR_fit <- jags.samples(MCAR_model, variable.names = MCAR_params, n.iter = 1000, thin = 1)
 
 # Store MCAR_fit
 filename <- sprintf("output/MCAR_marginalized_fit-a%gb%g.dat", abeta, bbeta)
