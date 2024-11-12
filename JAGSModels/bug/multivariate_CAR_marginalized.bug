@@ -1,5 +1,5 @@
 model {
-  /* Prior for G (+ F matrix) */
+  /* Prior for G and useful matrices */
   for(i in 1:I) {
     G[i,i] = 0
     Data_Prec[i,i] = one_over_tausq
@@ -13,12 +13,13 @@ model {
     }
     F[i,i] = rho*sum(G[i,]) + (1-rho)
   }
+  
+  /* Prior for p */
   p ~ dbeta(abeta,bbeta)
   
   /* MCAR Precision */
   MCAR_Prec = one_over_sigmasq*(F-rho*G)
   
-
   /* Prior for 1/sigma^2 */
   one_over_sigmasq ~ dgamma(2, 2)
   
@@ -27,6 +28,6 @@ model {
   
   /* Likelihood */
   for(q in 1:Ncov){
-    Y[((q-1)*I+1):(q*I)] ~ dmnorm(rep(mu0,I), Data_Prec*inverse(Data_Prec + MCAR_Prec)*MCAR_Prec)
+    Y[((q-1)*I+1):(q*I)] ~ dmnorm(rep(mu0,I), Data_Prec %*% inverse(Data_Prec + MCAR_Prec) %*% MCAR_Prec)
   }
 }
