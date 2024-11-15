@@ -1,4 +1,5 @@
 library("ggplot2")
+library("ggmap")
 library("rjags")
 library("sf")
 library("spdep")
@@ -90,11 +91,12 @@ abeta <- 2
 bbeta <- length(data)
 
 # Import chain
-filename <- file.path(getwd(), "output", sprintf("MCAR_fit-a%gb%g.dat", abeta, bbeta))
+# filename <- file.path(getwd(), "output", sprintf("MCAR_fit-a%gb%g.dat", abeta, bbeta))
+filename <- file.path(getwd(), "output", sprintf("MCAR_marginalized_fit-a%gb%g.dat", abeta, bbeta))
 load(filename)
 
 # 100 Iterations of burnin
-burnin <- 0
+burnin <- 100
 p_chain <- lapply(as.mcmc.list(MCAR_fit$p), function(chain){ as.vector(chain[(burnin+1):dim(chain)[1],1:dim(chain)[2]]) })
 p_chain <- do.call(c, p_chain)
 sigmasq_chain <- lapply(as.mcmc.list(MCAR_fit$one_over_sigmasq), function(chain){ as.vector(chain[(burnin+1):dim(chain)[1],1:dim(chain)[2]]) })
@@ -104,11 +106,11 @@ tausq_chain <- 1 / do.call(c, tausq_chain)
 psi_chain <- lapply(as.mcmc.list(MCAR_fit$psi), function(chain){ as.matrix(chain[(burnin+1):dim(chain)[1],1:dim(chain)[2]]) })
 psi_chain <- do.call(rbind, psi_chain)
 
-# Get posterior median in each area
-post_quantiles <- matrix(nrow = length(data), ncol = 5)
-for (q in 1:5) {
-  post_quantiles[,q] <- colMeans(psi_chain[,(length(data)*(q-1)+1):(length(data)*q)])
-}
+# # Get posterior median in each area
+# post_quantiles <- matrix(nrow = length(data), ncol = ncol(psi_chain)/93)
+# for (q in 1:(ncol(psi_chain)/93)) {
+#   post_quantiles[,q] <- colMeans(psi_chain[,(length(data)*(q-1)+1):(length(data)*q)])
+# }
 
 # Compute admissible edges
 Eadj <- which(W == 1, arr.ind = TRUE)
@@ -138,7 +140,7 @@ plt_plinks <- ggplot() +
   scale_fill_gradient2(low='steelblue4', mid = "white", high = 'darkorange', midpoint = 0.5, na.value = 'white',
                        guide = guide_colorbar("Post. Prob. of Inclusion", position = "bottom", direction = "horizontal", barwidth=unit(2.5,"in"),
                                               title.position = "bottom", title.hjust = 0.5, label.vjust = 0.5)) +
-  geom_tile(data = Gb_df, aes(x=x,y=y), fill=NA, col='darkred', linewidth=0.5) +
+  geom_tile(data = Gb_df, aes(x=x,y=y), fill=NA, col='darkred', linewidth = 0.5) +
   theme_void() + theme(legend.position = "bottom") + coord_equal()
 
 # PLOT - Traceplot of p
@@ -161,15 +163,6 @@ plt_tau2 <- ggplot() +
   geom_line(data = tau2_df, aes(x=Iteration, y=tau2), linewidth=1.2) +
   ylab(bquote(tau^2))
 
-# Show all plots together
-x11(width = 12, height = 8); gridExtra::grid.arrange(plt_plinks, plt_boundaries_median, plt_L1glob, plt_p, plt_sigma2, plt_tau2, ncol = 3, nrow = 2)
-# Save all plots together
-filename <- file.path(getwd(),"plots",sprintf("plt_BDSumStats-a%gb%g.pdf", abeta, bbeta))
-pdf(filename, width = 12, height = 4); gridExtra::grid.arrange(plt_plinks, plt_p, plt_sigma2, ncol = 3); dev.off()
-
-# quick plot of psis
-boxplot(psi_chain); abline(v = 93*(1:4), col='red', lwd=2, lty=1)
-
 # Show
 # x11(height = 4, width = 4); plt_plinks
 # Save
@@ -189,7 +182,7 @@ boxplot(psi_chain); abline(v = 93*(1:4), col='red', lwd=2, lty=1)
 # pdf(filename, height = 4, width = 4); plt_sigma2; dev.off()
 
 # Show
-x11(height = 4, width = 4); plt_tau2
+# x11(height = 4, width = 4); plt_tau2
 # Save
 # filename <- file.path(getwd(),"plots",sprintf("plt_tau2-a%gb%g.pdf", abeta, bbeta))
 # pdf(filename, height = 4, width = 4); plt_tau2; dev.off()
@@ -197,6 +190,11 @@ x11(height = 4, width = 4); plt_tau2
 
 # Compute boundary geometry
 sf_boundary <- boundary_geometry(Gb, sf_counties)
+sf_boundary <- boundary_geometry(Gb, sf_grid)
+
+ggplot() +
+  geom_sf(data = sf_grid, aes(fill=Group)) +
+  geom_sf(data = sf_boundary, color='darkred', linewidth=2)
 
 # Get maps from stadia
 counties_bbox <- unname(st_bbox(st_transform(sf_counties, 4326)))
@@ -212,10 +210,10 @@ plt_boundaries_median <- ggmap(counties_map) +
   scale_fill_gradient(low = 'steelblue', high = 'darkorange',
                       guide = guide_colorbar("Post. Median", direction = "horizontal", barwidth=unit(3,"in"),
                                              title.position = "bottom", title.hjust = 0.5, label.vjust = 0.5)) +
-  geom_sf(data = sf_boundary_3857, col='darkred', linewidth = 0.3, inherit.aes = FALSE) +
+  geom_sf(data = sf_boundary_3857, col='darkred', linewidth = 0.5, inherit.aes = FALSE) +
   theme_void() + theme(legend.position = "bottom")
 # Show / Save
-x11(height = 4, width = 4); plt_boundaries_median
+# x11(height = 4, width = 4); plt_boundaries_median
 
 
 # L1 distance between areas - Global Comparison ---------------------------
@@ -254,4 +252,11 @@ plt_L1glob <- ggplot() +
   scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
   theme(text = element_text(size = 14))
 # Show / Save
-x11(height = 3, width = 4); plt_L1glob
+# x11(height = 3, width = 4); plt_L1glob
+
+# Show all plots together
+x11(width = 12, height = 8); gridExtra::grid.arrange(plt_plinks, plt_boundaries_median, plt_L1glob, plt_p, plt_sigma2, plt_tau2, ncol = 3, nrow = 2)
+# Save all plots together
+# filename <- file.path(getwd(),"plots",sprintf("plt_BDSumStats-a%gb%g.pdf", abeta, bbeta))
+# pdf(filename, width = 12, height = 4); gridExtra::grid.arrange(plt_plinks, plt_p, plt_sigma2, ncol = 3); dev.off()
+x11(width = 12, height = 8); boxplot(psi_chain); abline(v = 93*(1:(ncol(psi_chain)/93)), col='red', lwd=2, lty=1)
