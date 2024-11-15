@@ -165,8 +165,8 @@ params =
 
   sigma {
     inv_gamma_prior {
-      alpha: 6
-      beta: 6
+      alpha: 2
+      beta: 2
     }
   }
 
