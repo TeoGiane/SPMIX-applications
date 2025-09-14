@@ -63,50 +63,53 @@ for (i in 1:numGroups) {
   }
 }
 
-# Setting MCMC parameters
-burnin = 5000
-niter = 5000
-thin = 1
+# # Setting MCMC parameters
+# burnin = 5000
+# niter = 5000
+# thin = 1
+# 
+# # Set sampler parameters
+# params =
+#   "
+#   num_components: 10
+# 
+#   p0_params {
+#     mu0: 0
+#     a: 2
+#     b: 2
+#     lam_: 0.1
+#   }
+# 
+#   rho {
+#     fixed: 0.95
+#   }
+# 
+#   sigma {
+#     inv_gamma_prior {
+#       alpha: 2
+#       beta: 2
+#     }
+#   }
+# 
+#   graph_params {
+#     beta_prior {
+#       a: 2
+#       b: 36
+#     }
+#   }
+#   "
+# 
+# # Sparse inducing prior --> a = 1, b = (2*I - 2) / 3 -1 (see Paci and Consonni (2020))
+# 
+# # Run Spatial sampler
+# out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = "rjmcmc")
+# if (exists("out")) {
+#   filename <- sprintf("BD_Scenario2_chain_%s.dat", format(Sys.time(), format = "%Y%m%d-%H%M"))
+#   save(out, file = filename)
+# }
 
-# Set sampler parameters
-params =
-  "
-  num_components: 10
-
-  p0_params {
-    mu0: 0
-    a: 2
-    b: 2
-    lam_: 0.1
-  }
-
-  rho {
-    fixed: 0.95
-  }
-
-  sigma {
-    inv_gamma_prior {
-      alpha: 2
-      beta: 2
-    }
-  }
-
-  graph_params {
-    beta_prior {
-      a: 2
-      b: 36
-    }
-  }
-  "
-
-# Sparse inducing prior --> a = 1, b = (2*I - 2) / 3 -1 (see Paci and Consonni (2020))
-
-# Run Spatial sampler
-out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = "rjmcmc")
-if (exists("out")) {
-  filename <- sprintf("BD_Scenario2_chain_%s.dat", format(Sys.time(), format = "%Y%m%d-%H%M"))
-  save(out, file = filename)
-}
+# Load chain
+load("BD_Scenario2_chain_.dat")
 
 # Deserialization
 chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
