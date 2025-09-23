@@ -65,7 +65,7 @@ for (i in 1:numGroups) {
 
 # Setting MCMC parameters
 burnin = 10000
-niter = 40000
+niter = 50000
 thin = 1
 
 # Set sampler parameters
@@ -102,15 +102,15 @@ params =
 # Sparse inducing prior --> a = 1, b = (2*I - 2) / 3 -1 (see Paci and Consonni (2020))
 
 # Run Spatial sampler
-# out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = "rjmcmc")
-# if (exists("out")) {
-#   filename <- sprintf("BD_Scenario2_chain_%s.dat", format(Sys.time(), format = "%Y%m%d-%H%M"))
-#   save(out, file = filename)
-# }
+out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = "rjmcmc")
+if (exists("out")) {
+  filename <- sprintf("BD_Scenario2_chain_%s.dat", format(Sys.time(), format = "%Y%m%d-%H%M"))
+  save(out, file = filename)
+}
 
 # Load chain
 # load("run1/BD_Scenario2_chain_20250913-1705.dat")
-load("run2/BD_Scenario2_chain_20250922-0130.dat")
+# load("run2/BD_Scenario2_chain_20250922-0130.dat")
 
 # Deserialization
 chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
@@ -288,7 +288,7 @@ plt_p_chain <- ggplot() +
   xlab('Iteration') + ylab('p')
 # Show / Save
 # x11(height = 4, width = 4); plt_p_chain
-pdf("plots/plt_p_chain.pdf", height = 4, width = 4); plt_p_chain; dev.off()
+pdf("plt_p_chain.pdf", height = 4, width = 4); plt_p_chain; dev.off()
 
 # # ESS of p
 # mcmcse::ess(p_chain)
@@ -302,7 +302,7 @@ plt_Nedge_chain <- ggplot() +
   xlab('Iteration') + ylab('|G|')
 # Show / Save
 # x11(height = 4, width = 4); plt_Nedge_chain
-pdf("plots/plt_Nedge_chain.pdf", height = 4, width = 4); plt_Nedge_chain; dev.off()
+pdf("plt_Nedge_chain.pdf", height = 4, width = 4); plt_Nedge_chain; dev.off()
 
 # # ESS of |G|
 # mcmcse::ess(Nedge_chain)
