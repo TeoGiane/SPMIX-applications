@@ -102,144 +102,145 @@ params =
 # Sparse inducing prior --> a = 1, b = (2*I - 2) / 3 -1 (see Paci and Consonni (2020))
 
 # Run Spatial sampler
-out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = "rjmcmc")
-if (exists("out")) {
-  filename <- sprintf("BD_Scenario2_chain_%s.dat", format(Sys.time(), format = "%Y%m%d-%H%M"))
-  save(out, file = filename)
-}
+# out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = "rjmcmc")
+# if (exists("out")) {
+#   filename <- sprintf("BD_Scenario2_chain_%s.dat", format(Sys.time(), format = "%Y%m%d-%H%M"))
+#   save(out, file = filename)
+# }
 
 # Load chain
-# load("BD_Scenario2_chain_20250913-1705.dat")
+# load("run1/BD_Scenario2_chain_20250913-1705.dat")
+load("run2/BD_Scenario2_chain_20250922-0130.dat")
 
 # Deserialization
-# chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
-# H_chain <- sapply(chains, function(x) x$num_components)
-# G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
-# 
-# # Compute posterior mean and variance for each area
-# means_chain <- lapply(chains, function(x) sapply(x$atoms, function(y) y$mean))
-# vars_chain <- lapply(chains, function(x) sapply(x$atoms, function(y) y$stdev^2))
-# weights_chain <- lapply(chains, function(x) t(sapply(x$groupParams, function(y) y$weights)))
-# post_means <- matrix(nrow = numGroups, ncol=length(chains))
-# post_vars <- matrix(nrow = numGroups, ncol=length(chains))
-# for (j in 1:length(chains)) {
-#   post_means[,j] <- weights_chain[[j]] %*% means_chain[[j]]
-#   second_moment <- as.vector(weights_chain[[j]] %*% (vars_chain[[j]] + means_chain[[j]]^2))
-#   post_vars[,j] <- second_moment - post_means[,j]^2
-# }
-# 
-# # Add to shapefile dataframe
-# sf_grid$post_mean <- apply(post_means, 1, mean)
-# sf_grid$post_var <- apply(post_vars, 1, mean)
-# 
-# # Compute estimated density
-# estimated_densities <- ComputeDensities(chains, seq(range(data)[1],range(data)[2],length.out=500), verbose = T)
-# 
-# # Compute admissible and non-admissible edges
-# admissible_edges <- which(W != 0, arr.ind = T)
-# non_admissible_edges <- which(W == 0, arr.ind = T)
-# 
-# # Compute plinks and median graph according to mean and estimated graph
-# plinks <- Reduce('+', G_chain)/length(G_chain)
-# plinks[which(W == 0, arr.ind = T)] <- NA
-# 
-# # Compute median graph
-# G_est <- matrix(NA, nrow(plinks), ncol(plinks))
-# G_est[admissible_edges] <- ifelse(plinks[admissible_edges] >= 0.5, 1, NA)
-# 
-# # Compute boundary graph
-# Gb <- matrix(NA, nrow(plinks), ncol(plinks))
-# Gb[admissible_edges] <- as.factor(ifelse(plinks[admissible_edges] < 0.5, 1, NA))
-# 
-# # Compute boundary geometry
-# if(!all(is.na(Gb))){
-#   bound_list <- apply(Gb, 1, function(x){which(x == 1)})
-#   bound_sf <- boundary_geometry(bound_list, sf_grid)
-# } else {
-#   cat("No Boundaries have been found\n")
-# }
-# 
-# # Posterior of H - barplot
-# df <- as.data.frame(table(H_chain)/length(H_chain)); names(df) <- c("NumComponents", "Prob.")
-# plt_postH <- ggplot(data = df, aes(x=NumComponents, y=Prob.)) +
-#   geom_bar(stat="identity", color="steelblue", fill="lightblue") +
-#   theme(plot.title = element_text(face="bold", hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) +
-#   xlab("N° of Components")
-# # Show plot
-# pdf("plt_postH.pdf", height = 4, width = 4); print(plt_postH); dev.off()
-# 
-# # Posterior of H - Traceplot
-# df <- data.frame("Iteration"=1:length(chains), "LowPoints"=H_chain-0.3, "UpPoints"=H_chain+0.3)
-# plt_traceH <- ggplot(data=df, aes(x=Iteration, y=LowPoints, xend=Iteration, yend=UpPoints)) +
-#   ylim(range(df[,-1])) + ylab("N° of Components") + geom_segment(linewidth = 0.1) +
-#   theme(plot.title = element_text(face="bold", hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
-# # Show plot
-# pdf("plt_traceH.pdf", height = 4, width = 4); print(plt_traceH); dev.off()
-# 
-# # Plot plinks matrix
-# df <- reshape2::melt(plinks, c("x", "y"), value.name = "val")
-# plt_plinks <- ggplot() +
-#   geom_tile(data = df, aes(x=x, y=y, fill=val)) +
-#   geom_rect(aes(xmin=0.5, ymin=0.5, xmax=numGroups+0.5, ymax=numGroups+0.5), col='gray25', fill=NA, linewidth=1) +
-#   scale_fill_gradient2(low='steelblue', mid = "white", high = 'darkorange', midpoint = 0.5, na.value = 'white',
-#                        guide = guide_colourbar(title = "Post. Prob. of Inclusion", direction = "horizontal",
-#                                                barwidth = unit(2.5, "in"), title.position = "bottom", title.hjust = 0.5)) +
-#   coord_equal() + theme_void() + theme(legend.position = "bottom")
-# 
-# # Plot estimated graph
-# df <- reshape2::melt(G_est, c("x","y"), value.name = "val")
-# plt_Gest <- ggplot() +
-#   geom_tile(data = df, aes(x=x, y=y, fill=val), width=1, height=1) +
-#   geom_rect(aes(xmin=0.5, ymin=0.5, xmax=nrow(G_est)+0.5, ymax=ncol(G_est)+0.5), col='gray25', fill=NA, linewidth=1) +
-#   scale_fill_gradient(low = 'darkorange', high = 'darkorange', na.value = "white",
-#                       guide = guide_legend(override.aes = list(alpha = 0), title="",
-#                                            title.position="bottom", label.position="bottom")) +
-#   theme_void() + coord_equal() + theme(legend.position = "bottom", legend.text = element_text(colour = "transparent"))
-# # Show plots
-# pdf("plt_plinks.pdf", height = 4, width = 4); print(plt_plinks); dev.off()
-# pdf("plt_Gest.pdf", height = 4, width = 4); print(plt_Gest); dev.off()
-# # gridExtra::grid.arrange(plt_plinks, plt_Gest, ncol=2)
-# 
-# # Plot boundaries on the grid + group
-# plt_boundaries <- ggplot() +
-#   geom_sf(data = sf_grid, aes(fill=Group), col='gray25', alpha = 0.6, linewidth=0.4) +
-#   scale_fill_manual(values = c("steelblue","darkorange"), labels = c("Student's t", "Skew Normal"),
-#                     guide = guide_legend(title = NULL, title.hjust = 0.5, label.position = "bottom",
-#                                          direction = "horizontal", title.position = "bottom", keywidth = unit(1,"in"))) +
-#   geom_sf(data = bound_sf, fill=NA, col='darkred', linewidth=1.2) +
-#   theme_void() + theme(legend.position = "bottom")
-# # Show plot
-# pdf("plt_boundaries.pdf", height = 4, width = 4); print(plt_boundaries); dev.off()
-# # Save
-# # pdf("plt_BDgroup.pdf", height = 4, width = 4); plt_boundaries; dev.off()
-# 
-# # Plot boundaries on the grid + post_mean
-# plt_postmean <- ggplot() +
-#   geom_sf(data = sf_grid, aes(fill=post_mean), col='gray25', alpha = 0.6, linewidth=0.4) +
-#   scale_fill_gradient(low = "steelblue", high = "darkorange",
-#                       guide = guide_colorbar(title = "Post. Mean", title.hjust = 0.5, title.position = "bottom",
-#                                              direction = "horizontal", barwidth = unit(2.5, "in"))) +
-#   geom_sf(data = bound_sf, fill=NA, col='darkred', linewidth=1.2) +
-#   theme_void() + theme(legend.position = "bottom")
-# # Show plot
-# pdf("plt_postmean.pdf", height = 4, width = 4); print(plt_postmean); dev.off()
-# # Save
-# # pdf("plt_BDpostMean.pdf", height = 4, width = 4); plt_postmean; dev.off()
-# 
-# # Plot boundaries on the grid + post_var
-# plt_postvar <- ggplot() +
-#   geom_sf(data = sf_grid, aes(fill=post_var), col='gray25', alpha = 0.6, linewidth=0.4) +
-#   scale_fill_gradient(low = "steelblue", high = "darkorange",
-#                       guide = guide_colorbar(title = "Post. Variance", title.hjust = 0.5, title.position = "bottom",
-#                                              direction = "horizontal", barwidth = unit(2.5, "in"))) +
-#   geom_sf(data = bound_sf, fill=NA, col='darkred', linewidth=1.2) +
-#   theme_void() + theme(legend.position = "bottom")
-# # Show plot
-# pdf("plt_postvar.pdf", height = 4, width = 4); print(plt_postvar); dev.off()
+chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
+H_chain <- sapply(chains, function(x) x$num_components)
+G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
+
+# Compute posterior mean and variance for each area
+means_chain <- lapply(chains, function(x) sapply(x$atoms, function(y) y$mean))
+vars_chain <- lapply(chains, function(x) sapply(x$atoms, function(y) y$stdev^2))
+weights_chain <- lapply(chains, function(x) t(sapply(x$groupParams, function(y) y$weights)))
+post_means <- matrix(nrow = numGroups, ncol=length(chains))
+post_vars <- matrix(nrow = numGroups, ncol=length(chains))
+for (j in 1:length(chains)) {
+  post_means[,j] <- weights_chain[[j]] %*% means_chain[[j]]
+  second_moment <- as.vector(weights_chain[[j]] %*% (vars_chain[[j]] + means_chain[[j]]^2))
+  post_vars[,j] <- second_moment - post_means[,j]^2
+}
+
+# Add to shapefile dataframe
+sf_grid$post_mean <- apply(post_means, 1, mean)
+sf_grid$post_var <- apply(post_vars, 1, mean)
+
+# Compute estimated density
+estimated_densities <- ComputeDensities(chains, seq(range(data)[1],range(data)[2],length.out=500), verbose = T)
+
+# Compute admissible and non-admissible edges
+admissible_edges <- which(W != 0, arr.ind = T)
+non_admissible_edges <- which(W == 0, arr.ind = T)
+
+# Compute plinks and median graph according to mean and estimated graph
+plinks <- Reduce('+', G_chain)/length(G_chain)
+plinks[which(W == 0, arr.ind = T)] <- NA
+
+# Compute median graph
+G_est <- matrix(NA, nrow(plinks), ncol(plinks))
+G_est[admissible_edges] <- ifelse(plinks[admissible_edges] >= 0.5, 1, NA)
+
+# Compute boundary graph
+Gb <- matrix(NA, nrow(plinks), ncol(plinks))
+Gb[admissible_edges] <- as.factor(ifelse(plinks[admissible_edges] < 0.5, 1, NA))
+
+# Compute boundary geometry
+if(!all(is.na(Gb))){
+  bound_list <- apply(Gb, 1, function(x){which(x == 1)})
+  bound_sf <- boundary_geometry(bound_list, sf_grid)
+} else {
+  cat("No Boundaries have been found\n")
+}
+
+# Posterior of H - barplot
+df <- as.data.frame(table(H_chain)/length(H_chain)); names(df) <- c("NumComponents", "Prob.")
+plt_postH <- ggplot(data = df, aes(x=NumComponents, y=Prob.)) +
+  geom_bar(stat="identity", color="steelblue", fill="lightblue") +
+  theme(plot.title = element_text(face="bold", hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) +
+  xlab("N° of Components")
+# Show plot
+pdf("plt_postH.pdf", height = 4, width = 4); print(plt_postH); dev.off()
+
+# Posterior of H - Traceplot
+df <- data.frame("Iteration"=1:length(chains), "LowPoints"=H_chain-0.3, "UpPoints"=H_chain+0.3)
+plt_traceH <- ggplot(data=df, aes(x=Iteration, y=LowPoints, xend=Iteration, yend=UpPoints)) +
+  ylim(range(df[,-1])) + ylab("N° of Components") + geom_segment(linewidth = 0.1) +
+  theme(plot.title = element_text(face="bold", hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+# Show plot
+pdf("plt_traceH.pdf", height = 4, width = 4); print(plt_traceH); dev.off()
+
+# Plot plinks matrix
+df <- reshape2::melt(plinks, c("x", "y"), value.name = "val")
+plt_plinks <- ggplot() +
+  geom_tile(data = df, aes(x=x, y=y, fill=val)) +
+  geom_rect(aes(xmin=0.5, ymin=0.5, xmax=numGroups+0.5, ymax=numGroups+0.5), col='gray25', fill=NA, linewidth=1) +
+  scale_fill_gradient2(low='steelblue', mid = "white", high = 'darkorange', midpoint = 0.5, na.value = 'white',
+                       guide = guide_colourbar(title = "Post. Prob. of Inclusion", direction = "horizontal",
+                                               barwidth = unit(2.5, "in"), title.position = "bottom", title.hjust = 0.5)) +
+  coord_equal() + theme_void() + theme(legend.position = "bottom")
+
+# Plot estimated graph
+df <- reshape2::melt(G_est, c("x","y"), value.name = "val")
+plt_Gest <- ggplot() +
+  geom_tile(data = df, aes(x=x, y=y, fill=val), width=1, height=1) +
+  geom_rect(aes(xmin=0.5, ymin=0.5, xmax=nrow(G_est)+0.5, ymax=ncol(G_est)+0.5), col='gray25', fill=NA, linewidth=1) +
+  scale_fill_gradient(low = 'darkorange', high = 'darkorange', na.value = "white",
+                      guide = guide_legend(override.aes = list(alpha = 0), title="",
+                                           title.position="bottom", label.position="bottom")) +
+  theme_void() + coord_equal() + theme(legend.position = "bottom", legend.text = element_text(colour = "transparent"))
+# Show plots
+pdf("plt_plinks.pdf", height = 4, width = 4); print(plt_plinks); dev.off()
+pdf("plt_Gest.pdf", height = 4, width = 4); print(plt_Gest); dev.off()
+# gridExtra::grid.arrange(plt_plinks, plt_Gest, ncol=2)
+
+# Plot boundaries on the grid + group
+plt_boundaries <- ggplot() +
+  geom_sf(data = sf_grid, aes(fill=Group), col='gray25', alpha = 0.6, linewidth=0.4) +
+  scale_fill_manual(values = c("steelblue","darkorange"), labels = c("Student's t", "Skew Normal"),
+                    guide = guide_legend(title = NULL, title.hjust = 0.5, label.position = "bottom",
+                                         direction = "horizontal", title.position = "bottom", keywidth = unit(1,"in"))) +
+  geom_sf(data = bound_sf, fill=NA, col='darkred', linewidth=1.2) +
+  theme_void() + theme(legend.position = "bottom")
+# Show plot
+pdf("plt_boundaries.pdf", height = 4, width = 4); print(plt_boundaries); dev.off()
+# Save
+# pdf("plt_BDgroup.pdf", height = 4, width = 4); plt_boundaries; dev.off()
+
+# Plot boundaries on the grid + post_mean
+plt_postmean <- ggplot() +
+  geom_sf(data = sf_grid, aes(fill=post_mean), col='gray25', alpha = 0.6, linewidth=0.4) +
+  scale_fill_gradient(low = "steelblue", high = "darkorange",
+                      guide = guide_colorbar(title = "Post. Mean", title.hjust = 0.5, title.position = "bottom",
+                                             direction = "horizontal", barwidth = unit(2.5, "in"))) +
+  geom_sf(data = bound_sf, fill=NA, col='darkred', linewidth=1.2) +
+  theme_void() + theme(legend.position = "bottom")
+# Show plot
+pdf("plt_postmean.pdf", height = 4, width = 4); print(plt_postmean); dev.off()
+# Save
+# pdf("plt_BDpostMean.pdf", height = 4, width = 4); plt_postmean; dev.off()
+
+# Plot boundaries on the grid + post_var
+plt_postvar <- ggplot() +
+  geom_sf(data = sf_grid, aes(fill=post_var), col='gray25', alpha = 0.6, linewidth=0.4) +
+  scale_fill_gradient(low = "steelblue", high = "darkorange",
+                      guide = guide_colorbar(title = "Post. Variance", title.hjust = 0.5, title.position = "bottom",
+                                             direction = "horizontal", barwidth = unit(2.5, "in"))) +
+  geom_sf(data = bound_sf, fill=NA, col='darkred', linewidth=1.2) +
+  theme_void() + theme(legend.position = "bottom")
+# Show plot
+pdf("plt_postvar.pdf", height = 4, width = 4); print(plt_postvar); dev.off()
 
 # # Save
 # # pdf("plt_BDpostVar.pdf", height = 4, width = 4); plt_postvar; dev.off()
-# 
+#
 # # Plot - Empirical density histogram in bordering areas
 # areas <- c(3,4)
 # plt_areas <- list()
@@ -255,7 +256,7 @@ if (exists("out")) {
 # # Save plot
 # # pdf("output/plt_areas_empirical_3.pdf", height = 3, width = 3); plt_areas[[1]]; dev.off()
 # # pdf("output/plt_areas_empirical_4.pdf", height = 3, width = 3); plt_areas[[2]]; dev.off()
-# 
+#
 # # Plot - Empirical density histogram + Estimated density
 # plt_areasdens <- list()
 # for (i in 1:length(areas)) {
@@ -267,45 +268,45 @@ if (exists("out")) {
 #     geom_ribbon(data = df, aes(x=x, ymin=ymin, ymax=ymax), fill='orange', alpha = 0.2, inherit.aes = F) +
 #     geom_line(data = df, aes(x=x, y=y), col='darkorange', linewidth=1.2) +
 #     ylim(c(0,0.6))
-#   
+#
 # }
 # # Show plot
 # plt_areasdens[[1]]; plt_areasdens[[2]]
 # # Save plot
 # # pdf("output/plt_areas_est_3.pdf", height = 3, width = 3); plt_areasdens[[1]]; dev.off()
 # # pdf("output/plt_areas_est_4.pdf", height = 3, width = 3); plt_areasdens[[2]]; dev.off()
-# 
-# 
+#
+#
 # # ESS, WAIC, robe per review ----------------------------------------------
-# 
-# # PLOT - Traceplot of p
-# p_chain <- sapply(chains, function(x){x$p})
-# df <- data.frame("Iter"=1:length(p_chain), "Value"=p_chain)
-# # Generate plot
-# plt_p_chain <- ggplot() +
-#   geom_line(data = df, aes(x = Iter, y = Value)) +
-#   xlab('Iteration') + ylab('p')
-# # Show / Save
-# # x11(height = 4, width = 4); plt_p_chain
-# pdf("plots/plt_p_chain.pdf", height = 4, width = 4); plt_p_chain; dev.off()
-# 
+
+# PLOT - Traceplot of p
+p_chain <- sapply(chains, function(x){x$p})
+df <- data.frame("Iter"=1:length(p_chain), "Value"=p_chain)
+# Generate plot
+plt_p_chain <- ggplot() +
+  geom_line(data = df, aes(x = Iter, y = Value)) +
+  xlab('Iteration') + ylab('p')
+# Show / Save
+# x11(height = 4, width = 4); plt_p_chain
+pdf("plots/plt_p_chain.pdf", height = 4, width = 4); plt_p_chain; dev.off()
+
 # # ESS of p
 # mcmcse::ess(p_chain)
-# 
-# # PLOT - Traceplot of |G|
-# Nedge_chain <- sapply(G_chain, function(x){sum(x[upper.tri(x)])})
-# df <- data.frame("Iter"=1:length(Nedge_chain), "Value"=Nedge_chain)
-# # Generate plot
-# plt_Nedge_chain <- ggplot() +
-#   geom_line(data = df, aes(x = Iter, y = Value)) +
-#   xlab('Iteration') + ylab('|G|')
-# # Show / Save
-# # x11(height = 4, width = 4); plt_Nedge_chain
-# pdf("plots/plt_Nedge_chain.pdf", height = 4, width = 4); plt_Nedge_chain; dev.off()
-# 
+
+# PLOT - Traceplot of |G|
+Nedge_chain <- sapply(G_chain, function(x){sum(x[upper.tri(x)])})
+df <- data.frame("Iter"=1:length(Nedge_chain), "Value"=Nedge_chain)
+# Generate plot
+plt_Nedge_chain <- ggplot() +
+  geom_line(data = df, aes(x = Iter, y = Value)) +
+  xlab('Iteration') + ylab('|G|')
+# Show / Save
+# x11(height = 4, width = 4); plt_Nedge_chain
+pdf("plots/plt_Nedge_chain.pdf", height = 4, width = 4); plt_Nedge_chain; dev.off()
+
 # # ESS of |G|
 # mcmcse::ess(Nedge_chain)
-# 
+
 # # PLOT - Traceplot of sigma^2
 # sigma_chain <- sapply(chains, function(x){x$Sigma$data[1]})
 # df <- data.frame("Iter"=1:length(sigma_chain), "Value"=sigma_chain)
@@ -316,13 +317,13 @@ if (exists("out")) {
 # # Show / Save
 # # x11(height = 4, width = 4); plt_sigma_chain
 # pdf("plots/plt_sigma_chain.pdf", height = 4, width = 4); plt_sigma_chain; dev.off()
-# 
+#
 # # ESS of sigma^2
 # mcmcse::ess(sigma_chain)
-# 
+#
 # # TODO: improve doc for WAIC
 # tmp <- ComputePosteriorLPDF(data, chains, verbose = T)
-# 
+#
 # # Plot - |G| with different initializations (DA SISTEMARE)
 # load("output/Nedge_chain_startempty.dat")
 # df <- data.frame("Iter" = 1:length(Nedge_chain), "Value"=Nedge_chain, "Group"=rep("Empty", length(Nedge_chain)))
