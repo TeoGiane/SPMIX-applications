@@ -5,3 +5,4 @@ __pycache__/
 
 # Files to ignore
 .cook
+*.sif
