@@ -1,3 +1,7 @@
 # Folders to ignore
 input/
 output/
+__pycache__/
+
+# Files to ignore
+.cook
