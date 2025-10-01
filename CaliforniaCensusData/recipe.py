@@ -67,6 +67,7 @@ create_task("generate_data", action=generate_data_action,
 create_task("run_full_dataset", action=["Rscript", "--vanilla", "src/run_sampler.R",
                                         "--data-file", "input/full_dataset.dat",
                                         "--num-components", "RJ", "--rho", 0.95,
-                                        "--output-file", "output/H_RJ/rho_0.95/full_dataset_chain.dat"],
+                                        "--output-file", "output/H_RJ/rho_0.95/full_dataset_chain.dat",
+                                        "&> output/H_RJ/rho_0.95/run_full_dataset.log"],
             dependencies=["input/full_dataset.dat"],
             targets=["output/H_RJ/rho_0.95/full_dataset_chain.dat"])
