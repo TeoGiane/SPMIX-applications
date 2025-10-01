@@ -9,26 +9,32 @@ opt_parser <- add_argument(opt_parser, arg = "--num-datasets", type = "integer",
                            help = "Number of datasets to generate")
 opt_parser <- add_argument(opt_parser, arg = "--subsample-size", type = "integer", default = 100,
                            help = "Number of sub-sampled data in each area")
+opt_parser <- add_argument(opt_parser, arg = "--dest-dir", type = "character", default = "input",
+                           help = "Directory to save generated datasets")
 extra_args <- parse_args(opt_parser)
 
 
 # Preliminary checks ------------------------------------------------------
 
-# Find parent folder of current file and set working directory
-args <- commandArgs()
-basedir <- dirname(sub("--file=", "", args[grep("--file=", args)]))
-basedir <- normalizePath(file.path(getwd(), basedir))
-setwd(dirname(basedir))
-cat(sprintf("Current Directory: %s\n", getwd())) # Log
+# Set working directory relative to the script location
+if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
+  # Running in RStudio
+  setwd(dirname(dirname(rstudioapi::getSourceEditorContext()$path)))
+} else {
+  # Running from command line
+  initial.options <- commandArgs(trailingOnly = FALSE)
+  script.name <- sub("--file=", "", initial.options[grep("--file=", initial.options)])
+  setwd(dirname(dirname(script.name)))
+}
+cat("Setting working directory to: ", getwd(), "\n")
 
 # Create data directory if not present
-data_dir <- file.path(getwd(), "data")
-if(!dir.exists(data_dir)){
-  dir.create(data_dir, recursive = TRUE)
+dest_dir <- file.path(getwd(), extra_args$dest_dir)
+if (!dir.exists(dest_dir)) {
+  dir.create(dest_dir, recursive = TRUE)
 }
-data_dir <- normalizePath(data_dir)
-cat(sprintf("Data Directory: %s\n", data_dir)) # Log
-
+dest_dir <- normalizePath(dest_dir)
+cat(sprintf("Destination Directory: %s\n", dest_dir)) # Log
 
 # Main code ---------------------------------------------------------------
 
@@ -38,11 +44,12 @@ suppressMessages(library("dplyr"))
 suppressMessages(library("spdep"))
 
 # Import usa shapefiles
-sf_usa <- read_sf(file.path(getwd(),"raw","us-pumas","us-pumas.shp"))
+sf_usa <- read_sf(file.path(getwd(), "raw", "ipums_puma_2010_tl20.shp"))
 
 # Extract LA, Orange & Ventura counties (sort PUMAs in ascending order)
 sf_counties <- sf_usa %>%
-  filter(State == 'California', grepl("Los Angeles County|Ventura County|Orange County", Name)) %>%
+  filter(State == 'California',
+         grepl("Los Angeles County|Ventura County|Orange County", Name)) %>%
   select(PUMA, Name, geometry) %>%
   arrange(PUMA)
 
@@ -51,7 +58,7 @@ adj_list <- poly2nb(sf_counties, queen = FALSE)
 W <- nb2mat(adj_list, style = "B")
 
 # Import raw data
-raw_data <- read.csv(file.path(getwd(),"raw","psam_p06.csv"))
+raw_data <- read.csv(file.path(getwd(), "raw", "psam_p06.csv"))
 
 # Clean data
 clean_data <- raw_data %>%
@@ -65,11 +72,12 @@ clean_data <- raw_data %>%
 
 # Save full dataset as data
 data <- lapply(clean_data, function(df){df$LPINCP})
-filename <- file.path(data_dir,"full_dataset.dat")
-save(data, file = filename); rm(data)
+filename <- file.path(dest_dir, "full_dataset.dat")
+save(data, file = filename)
+rm(data)
 
 # Check if subsample size is valid
-if(extra_args$subsample_size > min(sapply(clean_data, nrow))){
+if (extra_args$subsample_size > min(sapply(clean_data, nrow))) {
   msg <- sprintf("'--subsample-size' parameter not valid. Set a value <= %d",
                  min(sapply(clean_data, nrow)))
   stop(msg)
@@ -90,15 +98,21 @@ for (sim in 1:extra_args$num_datasets) {
   names(data) <- sf_counties$PUMA
   # Save data to file
   if (exists("data")) {
-    filename <- file.path(data_dir,sprintf("data_%03d.dat",sim))
+    filename <- file.path(dest_dir, sprintf("data_%03d.dat", sim))
     save(data, file = filename)
   }
 }
 
-# Save files in the data/ directory
-shp_dir <- file.path(data_dir, "counties-pumas")
-if(!dir.exists(shp_dir)){
+# Save files in the destination directory
+shp_dir <- file.path(dest_dir, "counties-pumas")
+if(!dir.exists(shp_dir)) {
   dir.create(shp_dir, recursive = TRUE)
 }
-st_write(sf_counties, file.path(shp_dir,"counties-pumas.shp"))
-save(W, file = file.path(data_dir,"adj_matrix.dat"))
+st_write(sf_counties, file.path(shp_dir, "counties-pumas.shp"), append = FALSE)
+save(W, file = file.path(dest_dir, "adj_matrix.dat"))
+
+# Remove raw folder if present
+raw_dir <- file.path(getwd(), "raw")
+if (dir.exists(raw_dir)) {
+  unlink(raw_dir, recursive = TRUE)
+}
