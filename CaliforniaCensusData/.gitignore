@@ -1,6 +1,7 @@
 # Ignored files
 .Rhistory
 .cook
+*.sif
 
 # Ignored folders
 .old/
