@@ -1,11 +1,9 @@
 # Ignored files
 .Rhistory
-download-links.txt
+.cook
 
 # Ignored folders
 .old/
-data/
-log/
+input/
 output/
-plots/
-summary/
+shp/
