@@ -62,3 +62,11 @@ create_task("generate_data", action=generate_data_action,
             targets=["input/counties-pumas/counties-pumas.shp"] +
                     [f"input/data_{i:03d}.dat" for i in range(1, num_datasets+1)] +
                     ["input/adj_matrix.dat"])
+
+# Define run_full_dataset task
+create_task("run_full_dataset", action=["Rscript", "--vanilla", "src/run_sampler.R",
+                                        "--data-file", "input/full_dataset.dat",
+                                        "--num-components", "RJ", "--rho", 0.95,
+                                        "--output-file", "output/H_RJ/rho_0.95/full_dataset_chain.dat"],
+            dependencies=["input/full_dataset.dat"],
+            targets=["output/H_RJ/rho_0.95/full_dataset_chain.dat"])

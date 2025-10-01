@@ -8,7 +8,7 @@ opt_parser <- add_argument(opt_parser, arg = "input-file", type = "character",
                            help = "Relative path to input data file")
 opt_parser <- add_argument(opt_parser, arg = "--rho", type = "double", default = 0.95,
                            help = "Value of 'rho' parameter, fixed in (0,1)")
-opt_parser <- add_argument(opt_parser, arg = "--num-components", type = "character", short = "-c",
+opt_parser <- add_argument(opt_parser, arg = "--num-components", type = "character",
                            help = "Value for the number of components, or 'RJ' if the reverisble jump sampler is considered")
 opt_parser <- add_argument(opt_parser, arg = "--output-file", type = "character", default = "./output/chain.dat",
                            help = "Relative path to the output file")
@@ -70,9 +70,9 @@ load(data_file)
 load(adj_file)
 
 # Setting MCMC parameters
-burnin = 5000
-niter = 5000
-thin = 1
+burnin <- 20000
+niter <- 40000
+thin <- 1
 
 # Set sampler parameters template
 params_template =
