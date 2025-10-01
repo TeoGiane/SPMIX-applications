@@ -1,4 +1,9 @@
+# Ignored files
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
+.cook
+
+# Ignored folders
+__pycache__/
