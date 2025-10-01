@@ -33,7 +33,7 @@ data_file <- normalizePath(data_file)
 cat(sprintf("Data file: %s\n", data_file)) # Log
 
 # Check if Adj. Matrix file exists
-adj_file <- file.path(getwd(), "data", "adj_matrix.dat")
+adj_file <- file.path(getwd(), dirname(extra_args$input_file), "adj_matrix.dat")
 if(!file.exists(adj_file)){
   stop(sprintf("%s does not exist", adj_file))
 }
