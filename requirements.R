@@ -2,7 +2,7 @@
 repos <- "https://cloud.r-project.org/"
 
 # List of required packages
-package_deps <- c("devtools", "sf", "spdep", "CARBayes", "argparser", "rjags", "RProtoBuf")
+package_deps <- c("devtools", "sf", "spdep", "CARBayes", "argparser", "rjags", "reshape2", "RProtoBuf")
 
 # Install packages from CRAN
 install.packages(package_deps, repos = repos)
