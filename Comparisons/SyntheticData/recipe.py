@@ -25,5 +25,5 @@ for model in MODELS:
 # Create generate_plot task
 generate_plot_action = ["Rscript","--vanilla","src/generate_plot.R"]
 generate_plot_deps = ["src/generate_plot.R"] + run_model_targets
-generate_plot_targets = [f"output/plt_boundaries-{model}.pdf" for model in MODELS] + [f"output/plt_plinks-{model}.pdf" for model in MODELS]
+generate_plot_targets = [f"plots/plt_boundaries-{model}.pdf" for model in MODELS]
 create_task(name="generate_plot", dependencies=generate_plot_deps, action=generate_plot_action, targets=generate_plot_targets)
