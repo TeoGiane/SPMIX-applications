@@ -1,6 +1,7 @@
 # Folders to ignore
 input/
 output/
+plots/
 __pycache__/
 
 # Files to ignore
