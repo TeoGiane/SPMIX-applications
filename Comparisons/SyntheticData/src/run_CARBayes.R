@@ -67,7 +67,7 @@ CARBayes_fit <- S.CARdissimilarity(median ~ 1, data = CARBayes_data, family = "g
 
 # Store CARBayes_fit
 if (exists("CARBayes_fit")) {
-    filename <- sprintf("%s/CARBayes-chain-%s.dat", output_dir, format(Sys.time(), format = "%Y%m%d-%H%M"))
-    save(CARBayes_fit, file = filename)
-    cat(sprintf("Saved CARBayes chain at: %s\n", filename))
+  filename <- file.path(output_dir, "CARBayes-fit.dat")
+  save(CARBayes_fit, file = filename)
+  cat(sprintf("Saved CARBayes chain at: %s\n", filename))
 }

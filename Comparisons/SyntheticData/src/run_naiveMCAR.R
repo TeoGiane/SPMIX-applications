@@ -82,7 +82,7 @@ naiveMCAR_fit <- jags.samples(naiveMCAR_model, variable.names = naiveMCAR_params
 
 # Store naiveMCAR_fit
 if (exists("naiveMCAR_fit")) {
-    filename <- sprintf("%s/naiveMCAR-chain-%s.dat", output_dir, format(Sys.time(), format = "%Y%m%d-%H%M"))
-    save(naiveMCAR_fit, file = filename)
-    cat(sprintf("Saved naiveMCAR chain at: %s\n", filename))
+  filename <- file.path(output_dir, "naiveMCAR-fit.dat")
+  save(naiveMCAR_fit, file = filename)
+  cat(sprintf("Saved naiveMCAR chain at: %s\n", filename))
 }

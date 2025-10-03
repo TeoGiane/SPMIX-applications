@@ -61,11 +61,11 @@ Y <- c(sapply(data, quantile, 0.05),
 names(Y) <- NULL
 
 # Run SKATER algorithm
-SKATER_fit <- skater(edges = edges, data = Y, ncuts = extra_args$n_cuts)
+SKATER_fit <- skater(edges = edges, data = Y, ncuts = extra_args$n_cuts, crit = 2)
 
-# Store naiveMCAR_fit
+# Store SKATER_fit
 if (exists("SKATER_fit")) {
-    filename <- sprintf("%s/SKATER-output-%s.dat", output_dir, format(Sys.time(), format = "%Y%m%d-%H%M"))
+    filename <- file.path(output_dir, "SKATER-fit.dat")
     save(SKATER_fit, file = filename)
     cat(sprintf("Saved SKATER output at: %s\n", filename))
 }
