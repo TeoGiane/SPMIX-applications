@@ -126,7 +126,7 @@ for(model in models){
           },
          "SPMIX" = {#
             load(file.path(chains_dir, "SPMIX-fit.dat"))
-            chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
+            chains <- sapply(SPMIX_fit, function(x) DeserializeSPMIXProto("UnivariateState",x))
             G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
             plinks <- Reduce('+', G_chain)/length(G_chain)
             plinks[which(W == 0, arr.ind = TRUE)] <- NA
@@ -188,7 +188,7 @@ for(model in models){
   
   # PLOT - plinks matrix and with boundary edges in red
   if (model != "SKATER") {
-    plinks_df <- reshape2::melt(plinks, c("x", "y"), value.name="PPI") %>% na.omit()
+    plinks_df <- reshape2::melt(plinks, c("x","y"), value.name="PPI") %>% na.omit()
     Gb_df <- reshape2::melt(Gb, c("x","y"), value.name="Gb") %>% na.omit()
     plt_plinks <- ggplot() +
       geom_tile(data = plinks_df, aes(x=x, y=y, fill=PPI), width=1, height=1) +
