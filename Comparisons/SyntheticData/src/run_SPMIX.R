@@ -92,11 +92,12 @@ params_template <-
 # Specify beta parameters
 params <- sprintf(params_template, extra_args$a_beta, extra_args$b_beta)
 
-# Run Sampler and store result
+# Run SPMIX Sampler
+SPMIX_fit <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = "rjmcmc")
 
-out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = "rjmcmc")
-if (exists("out")) {
-  filename <- sprintf("%s/SPMIX-chain-%s.dat", output_dir, format(Sys.time(), format = "%Y%m%d-%H%M"))
-  save(out, file = filename)
+# Store SPMIX_fit
+if (exists("SPMIX_fit")) {
+  filename <- file.path(output_dir, "SPMIX-fit.dat")
+  save(SPMIX_fit, file = filename)
   cat(sprintf("Saved SPMIX chain at: %s\n", filename))
 }
