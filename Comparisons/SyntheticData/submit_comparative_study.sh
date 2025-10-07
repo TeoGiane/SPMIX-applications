@@ -20,6 +20,7 @@ export APPTAINER=/opt/mox/apptainer/bin/apptainer
 in-apptainer () {
 	$APPTAINER exec --pwd /workdir --bind `pwd`:/workdir spmix.sif $@
 }
+export -f in-apptainer
 
 # Define models to compare
 MODELS=(SPMIX CARBayes naiveMCAR SKATER)
@@ -28,5 +29,5 @@ MODELS=(SPMIX CARBayes naiveMCAR SKATER)
 mkdir -p log
 
 # Run comparative study for each model
-parallel -j 0 in-apptainer cook exec run_{1} &> log/run_{1}.log ::: "${MODELS[@]}"
+parallel -j 0 'in-apptainer cook exec run_{1} &> log/run_{1}.log' ::: "${MODELS[@]}"
 in-apptainer cook exec generate_plot &> log/generate_plot.log
