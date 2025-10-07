@@ -15,8 +15,18 @@ cd ${PBS_O_WORKDIR}
 source /opt/mox/spack/share/spack/setup-env.sh
 spack load parallel
 
+# Create alias for apptainer execution
+export APPTAINER=/opt/mox/apptainer/bin/apptainer
+in-apptainer () {
+	$APPTAINER exec --pwd /workdir --bind `pwd`:/workdir spmix.sif $@
+}
+
 # Define models to compare
 MODELS=(SPMIX CARBayes naiveMCAR SKATER)
 
+# Create log directory if it doesn't exist
+mkdir -p log
+
 # Run comparative study for each model
-parallel -j 0 ./in-apptainer.sh cook exec run_{1} ::: "${MODELS[@]}"
+parallel -j 0 in-apptainer cook exec run_{1} &> log/run_{1}.log ::: "${MODELS[@]}"
+in-apptainer cook exec generate_plot &> log/generate_plot.log
