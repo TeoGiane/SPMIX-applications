@@ -64,8 +64,8 @@ for (i in 1:numGroups) {
 }
 
 # Setting MCMC parameters
-burnin = 10000
-niter = 50000
+burnin = 20000
+niter = 40000
 thin = 1
 
 # Set sampler parameters
