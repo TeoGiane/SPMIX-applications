@@ -2,7 +2,7 @@
 
 # PBS Settings
 #PBS -S /bin/bash
-#PBS -l select=1:ncpus=96
+#PBS -l select=1:ncpus=24:mem=64gb
 #PBS -l walltime=24:00:00
 #PBS -N SyntheticData-comparative_study
 #PBS -o log/SyntheticData-comparative_study.out
@@ -28,6 +28,6 @@ mkdir -p log
 # Define models to compare
 MODELS=(SPMIX CARBayes naiveMCAR SKATER)
 
-# Run comparative study for each model
+# Execution in containerized environment
 parallel -j 0 'in-apptainer cook exec run_{1} &> log/run_{1}.log' ::: "${MODELS[@]}"
 in-apptainer cook exec generate_plot &> log/generate_plot.log
