@@ -1,0 +1,424 @@
+# # ---- CALIFORNIA CENSUS DATASET - GENERATE PLOTS ---- # #
+
+# Command line input options via argparser
+suppressMessages(library("argparser"))
+opt_parser <- arg_parser(name = "generate_plot", hide.opts = TRUE,
+                         description = "Generate plots for the analysis of the California Census Dataset")
+opt_parser <- add_argument(opt_parser, arg = "--sim-file", type = "character", default = NULL,
+                           help = "Relative path to the simulation file to use.")
+opt_parser <- add_argument(opt_parser, arg = "--output-dir", type = "character", default = "plots",
+                           help = "Relative path to save the generated plots")
+extra_args <- parse_args(opt_parser)
+
+# Set working directory relative to the script location
+if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
+  # Running in RStudio
+  setwd(dirname(dirname(rstudioapi::getSourceEditorContext()$path)))
+} else {
+  # Running from command line
+  initial.options <- commandArgs(trailingOnly = FALSE)
+  script.name <- sub("--file=", "", initial.options[grep("--file=", initial.options)])
+  setwd(dirname(dirname(script.name)))
+}
+cat("Setting working directory to: ", getwd(), "\n")
+
+# Check if input directory exists
+input_dir <- file.path(getwd(), "input")
+if (!dir.exists(input_dir)) {
+  stop(sprintf("Input directory '%s' does not exists.", input_dir))
+}
+cat("Input Directory: ", input_dir, "\n") # Log
+
+# Check if simulation requested existsT
+sim_file <- file.path(getwd(), extra_args$sim_file)
+if(!file.exists(sim_file)){
+  stop(sprintf("Simulation '%s' does not exists.", sim_file))
+}
+
+# Generate output directory if it does not exist
+output_dir <- file.path(getwd(), extra_args$output_dir)
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+  cat("Created output directory: ", output_dir, "\n")
+}
+
+# Import required packages
+suppressMessages(library("ggplot2"))
+suppressMessages(library("ggridges"))
+suppressMessages(library("ggrepel"))
+suppressMessages(library("ggmap"))
+suppressMessages(library("sf"))
+suppressMessages(library("spdep"))
+suppressMessages(library("SPMIX"))
+suppressMessages(library("dplyr"))
+
+# Functions
+sf_ggmap <- function(map) {
+  if (!inherits(map, "ggmap")) stop("map must be a ggmap object")
+  
+  # Extract the bounding box (in lat/lon) from the ggmap to a numeric vector, 
+  # and set the names to what sf::st_bbox expects:
+  map_bbox <- setNames(unlist(attr(map, "bb")), 
+                       c("ymin", "xmin", "ymax", "xmax"))
+  
+  # Coonvert the bbox to an sf polygon, transform it to 3857, and convert back to a bbox
+  bbox_3857 <- st_bbox(st_transform(st_as_sfc(st_bbox(map_bbox, crs = 4326)), 3857))
+  
+  # Overwrite the bbox of the ggmap object with the transformed coordinates 
+  attr(map, "bb")$ll.lat <- bbox_3857["ymin"]
+  attr(map, "bb")$ll.lon <- bbox_3857["xmin"]
+  attr(map, "bb")$ur.lat <- bbox_3857["ymax"]
+  attr(map, "bb")$ur.lon <- bbox_3857["xmax"]
+  
+  # Return
+  return(map)
+}
+
+boundary_geometry <- function(boundary_graph, sf_geometry) {
+  # Check
+  if(!inherits(sf_geometry, "sf")) { stop("'sf_geometry' must be an sf object") }
+  
+  # Add id column
+  if(!("id" %in% names(sf_geometry))){
+    sf_geometry$id <- 1:nrow(sf_geometry)
+  }
+  
+  # Generate boundary list using upper-triangular view of boundary_graph
+  boundary_graph[lower.tri(boundary_graph)] <- NA
+  boundary_list <- apply(boundary_graph, 1, function(x){which(x==1)})
+  
+  # Create empty list
+  geom_bdd <- list(); k <- 1
+  for(i in 1:nrow(sf_geometry)) {
+    for (j in (boundary_list[[i]])) {
+      # Compute boundary geometry between i and j
+      sel_geom <- sf_geometry[c(i,j), c("id", "geometry")]
+      bounds <- suppressWarnings(st_intersection(sel_geom, sel_geom))
+      bounds <- st_geometry(bounds[bounds$id != bounds$id.1, ])
+      # Append to list
+      geom_bdd[[k]] <- st_sf(geometry = bounds); k <- k+1
+    }
+    
+    # Get current area and its boundaries
+    # sel_geom <- sf_geometry[c(i, boundary_list[[i]]), c("id", "geometry")]
+    
+    # Compute geometry of boundary
+    # bounds <- suppressWarnings(st_intersection(sel_geom, sel_geom))
+    # bounds <- st_geometry(bounds[bounds$id != bounds$id.1, ])
+    
+    # Add to list
+    # geom_bdd[[i]] <- st_sf(geometry = bounds)
+  }
+  
+  geom_bdd <- do.call(rbind, geom_bdd)
+  
+  # Drop points if present
+  points <- which(attr(geom_bdd$geometry, "classes") == "POINT")
+  if(length(points) > 0){
+    geom_bdd <- geom_bdd[-points, ]
+  }
+  
+  # Condense everything into a unique sf object and return
+  return(geom_bdd)
+}
+
+L1_distance <- function(y1, y2, x) {
+  I <- diff(range(x))
+  return(I * mean(abs(y1 - y2)))
+}
+
+# Import shapefile
+sf_folder <- file.path(getwd(), "data", "counties-pumas")
+sf_counties <- read_sf(file.path(sf_folder, "counties-pumas.shp"))
+
+# Compute adjacency list and matrix
+adj_list <- poly2nb(sf_counties, queen = FALSE)
+W <- nb2mat(adj_list, style = "B")
+
+# Import data
+# load("data/data_001.dat")
+
+# Import data and adjacency matrix (OLD)
+# load("data/clean_data.dat")
+# load("data/adj_matrix.dat")
+# adj_list <- apply(W, 1, function(x){which(x==1)})
+
+cat("Shapefiles have been imported\n") # log
+
+# out_file = file.path(sim_folder, "chain_001.dat")
+# out_file = file.path(sim_folder, "chain_full_dataset.dat")
+
+# Load output
+load(sim_file)
+cat(sprintf("Loaded chain: %s\n", sim_file)) # log
+
+# Deserialization
+chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
+H_chain <- sapply(chains, function(x) x$num_components)
+G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
+Nedge_chain <- sapply(G_chain, function(x){sum(x[upper.tri(x)])}); mcmcse::ess(Nedge_chain)
+sigma_chain <- sapply(chains, function(x){x$Sigma$data[1]}); mcmcse::ess(sigma_chain)
+p_chain <- sapply(chains, function(x){x$p}); mcmcse::ess(p_chain)
+
+# Compute posterior mean and variance for each PUMA
+means_chain <- lapply(chains, function(x) sapply(x$atoms, function(y) y$mean))
+vars_chain <- lapply(chains, function(x) sapply(x$atoms, function(y) y$stdev^2))
+weights_chain <- lapply(chains, function(x) t(sapply(x$groupParams, function(y) y$weights)))
+post_means <- matrix(nrow = nrow(sf_counties), ncol=length(chains))
+post_vars <- matrix(nrow = nrow(sf_counties), ncol=length(chains))
+for (j in 1:length(chains)) {
+  post_means[,j] <- weights_chain[[j]] %*% means_chain[[j]]
+  second_moment <- as.vector(weights_chain[[j]] %*% (vars_chain[[j]] + means_chain[[j]]^2))
+  post_vars[,j] <- second_moment - post_means[,j]^2
+}
+
+# Add to shapefile dataframe
+sf_counties$emp_mean <- sapply(data, mean)
+sf_counties$post_mean <- apply(post_means, 1, mean)
+sf_counties$emp_var <- sapply(data, var)
+sf_counties$post_var <- apply(post_vars, 1, mean)
+
+# Compute estimated density
+x <- seq(range(data)[1], range(data)[2], length.out = 500)
+estimated_densities <- ComputeDensities(chains, x, verbose = TRUE)
+
+# Compute admissible edges
+Eadj <- which(W == 1, arr.ind = TRUE)
+
+# Compute PPI matrix (remove not admissible edges)
+plinks <- Reduce('+', G_chain)/length(G_chain)
+plinks[which(W == 0, arr.ind = TRUE)] <- NA
+
+# Threshold -> posterior median of p
+gamma_graph <- 0.5
+
+# Compute neighbouring graph
+Gn <- matrix(NA, nrow(plinks), ncol(plinks))
+Gn[Eadj] <- ifelse(plinks[Eadj] >= gamma_graph, 1, NA)
+
+# Compute boundary graph
+Gb <- matrix(NA, nrow(plinks), ncol(plinks))
+Gb[Eadj] <- ifelse(plinks[Eadj] < gamma_graph, 1, NA)
+
+# Compute boundary geometry
+bound_sf <- boundary_geometry(Gb, sf_counties)
+
+# Compute neighbouring and boundary adjacency lists
+neigh_list <- apply(Gn, 1, function(x){which(x==1)})
+bound_list <- apply(Gb, 1, function(x){which(x==1)})
+
+# L1 distance between areas - Local Comparison
+L1 <- data.frame("bounds" = rep(NA, nrow(sf_counties)),
+                 "no_bounds" = rep(NA, nrow(sf_counties)))
+for (i in 1:nrow(sf_counties)) {
+  p <- colMeans(estimated_densities[[i]])
+  q_b <- lapply(estimated_densities[bound_list[[i]]], function(x) { colMeans(x) })
+  q_nb <- lapply(estimated_densities[neigh_list[[i]]], function(x) { colMeans(x) })
+  if(length(q_b) > 0) {
+    L1[i, "bounds"] <- mean(sapply(q_b, function(y){ L1_distance(p, y, x) }))
+  }
+  if(length(q_nb) > 0) {
+    L1[i, "no_bounds"] <- mean(sapply(q_nb, function(y){ L1_distance(p, y, x) }))
+  }
+}
+
+# PLOT - boxplot comparison (local)
+L1loc <- rbind(data.frame("Dist" = L1$no_bounds, "Type" = "Neigh"),
+               data.frame("Dist" = L1$bounds, "Type" = "Bound"))
+L1loc$Type <- as.factor(L1loc$Type)
+L1loc <- na.omit(L1loc)
+plt_L1loc <- ggplot() +
+  geom_boxplot(data = L1loc, aes(x=Type, y=Dist)) +
+  geom_boxplot(data = L1loc, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
+  scale_x_discrete(labels = c(bquote(d[FM^{loc}]), bquote(d[TM^{loc}]))) + labs(x=NULL,y=NULL) +
+  scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
+  scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
+  theme(text = element_text(size = 14))
+pdf(file.path(output_dir, "plt_L1loc.pdf"), height = 3, width = 4); print(plt_L1loc); dev.off()
+
+# L1 distance between areas - Global Comparison
+Gn_up <- Gn; Gn_up[lower.tri(Gn_up)] <- NA
+neigh_pairs <- which(Gn_up == 1, arr.ind = T)
+Gb_up <- Gb; Gb_up[lower.tri(Gb_up)] <- NA
+bound_pairs <- which(Gb_up == 1, arr.ind = T)
+L1_neigh <- data.frame("Type" = rep("Neigh", nrow(neigh_pairs)),
+                       "Dist" = rep(NA, nrow(neigh_pairs)))
+for (i in 1:nrow(neigh_pairs)) {
+  L1_neigh$Dist[i] <- L1_distance(colMeans(estimated_densities[[neigh_pairs[i,1]]]),
+                                  colMeans(estimated_densities[[neigh_pairs[i,2]]]), x)
+}
+L1_bound <- data.frame("Type" = rep("Bound", nrow(bound_pairs)),
+                       "Dist" = rep(NA, nrow(bound_pairs)))
+for (i in 1:nrow(bound_pairs)) {
+  L1_bound$Dist[i] <- L1_distance(colMeans(estimated_densities[[bound_pairs[i,1]]]),
+                                  colMeans(estimated_densities[[bound_pairs[i,2]]]), x)
+}
+
+# PLOT - boxplot comparison (global)
+L1glob <- rbind(L1_neigh, L1_bound); rm(L1_neigh, L1_bound)
+L1glob$Type <- as.factor(L1glob$Type)
+plt_L1glob <- ggplot() +
+  geom_boxplot(data = L1glob, aes(x=Type, y=Dist)) +
+  geom_boxplot(data = L1glob, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
+  scale_x_discrete(labels = c(bquote(d[FM]), bquote(d[TM]))) + labs(x=NULL,y=NULL) +
+  scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
+  scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
+  theme(text = element_text(size = 14))
+pdf(file.path(output_dir, "plt_L1glob.pdf"), height = 3, width = 4); print(plt_L1glob); dev.off()
+
+# PLOT - Traceplot of |G|
+df <- data.frame("Iteration" = 1:length(Nedge_chain), "Value" = Nedge_chain)
+plt_Nedge_chain <- ggplot(data = df) + 
+  geom_line(aes(x=Iteration, y=Value)) + ylab("|G|")
+pdf(file.path(output_dir, "plt_Nedge_chain.pdf"), height = 4, width = 4); print(plt_Nedge_chain); dev.off()
+
+# PLOT - Traceplot of sigma^2
+df <- data.frame("Iteration" = 1:length(sigma_chain), "Value" = sigma_chain)
+plt_sigma_chain <- ggplot(data = df) + 
+  geom_line(aes(x=Iteration, y=Value)) + ylab(bquote(sigma^2))
+pdf(file.path(output_dir, "plt_sigma_chain.pdf"), height = 4, width = 4); print(plt_sigma_chain); dev.off()
+
+# PLOT - traceplot of p
+df <- data.frame("Iteration" = 1:length(p_chain), "Value" = p_chain)
+plt_p_chain <- ggplot(data = df) + 
+  geom_line(aes(x=Iteration, y=Value)) + ylab("p")
+pdf(file.path(output_dir, "plt_p_chain.pdf"), height = 4, width = 4); print(plt_p_chain); dev.off()
+
+# PLOT - Posterior distribution of H
+df <- as.data.frame(table(H_chain)/length(H_chain)); names(df) <- c("NumComponents", "Prob.")
+plot_postH <- ggplot(data = df, aes(x=NumComponents, y=Prob.)) +
+  geom_bar(stat="identity", color="steelblue", fill="lightblue") +
+  xlab("N° of Components")
+pdf(file.path(output_dir, "plt_postH.pdf"), height = 4, width = 4); print(plot_postH); dev.off()
+
+# PLOT - plinks matrix and with boundary edges in red
+plinks_df <- reshape2::melt(plinks, c("x", "y"), value.name="PPI") %>% na.omit()
+Gb_df <- reshape2::melt(Gb, c("x","y"), value.name="Gb") %>% na.omit()
+plt_plinks <- ggplot() +
+  geom_tile(data = plinks_df, aes(x=x, y=y, fill=PPI), width=1, height=1) +
+  geom_rect(aes(xmin=0.5, xmax=nrow(plinks)+0.5, ymin=0.5, ymax=nrow(plinks)+0.5), fill=NA, color="gray25", linewidth=0.5) +
+  scale_fill_gradient2(low='steelblue4', mid = "white", high = 'darkorange', midpoint = 0.5, na.value = 'white',
+                       guide = guide_colorbar("Post. Prob. of Inclusion", position = "bottom", direction = "horizontal", barwidth=unit(2.5,"in"),
+                                              title.position = "bottom", title.hjust = 0.5, label.vjust = 0.5)) +
+  geom_tile(data = Gb_df, aes(x=x,y=y), fill=NA, col='darkred', linewidth=0.5) +
+  theme_void() + theme(legend.position = "bottom") + coord_equal()
+pdf(file.path(output_dir, "plt_plinks.pdf"), height = 4, width = 4); print(plt_plinks); dev.off()
+
+# # PLOT - Posterior Summary graph
+# df <- reshape2::melt(G_sum, c("x","y"), value.name = "Val"); df[which(df$Val == 0), "Val"] <- NA; df$Val <- as.factor(df$Val)
+# # Generate
+# plt_Gsum <- ggplot() +
+#   geom_tile(data = df, aes(x=x, y=y, fill=Val), width=1, height=1) +
+#   geom_rect(aes(xmin=0.5, xmax=nrow(G_est)+0.5, ymin=0.5, ymax=nrow(G_est)+0.5), fill=NA, color='gray25', linewidth=0.5) +
+#   scale_fill_manual(labels = c("Boundary edge", "Graph edge", NULL),
+#                     values = c("darkred", "darkorange"),
+#                     na.translate = F,
+#                     guide = guide_legend(title="", direction = "horizontal", title.position = "bottom",
+#                                          label.position = "bottom", keywidth = unit(3,"cm"), )) +
+#   theme_void() + theme(legend.position = "bottom") + coord_equal()
+# # Show
+# plt_Gsum
+
+# # PLOT - Posterior boundary graph
+# df <- reshape2::melt(G_b, c("x","y"), value.name = "Val")
+# # Generate
+# plt_Gbound <- ggplot() +
+#   geom_tile(data = df, aes(x=x, y=y, fill=Val), width=1, height=1) +
+#   geom_rect(aes(xmin=0.5, xmax=nrow(G_est)+0.5, ymin=0.5, ymax=nrow(G_est)+0.5), fill=NA, color='gray25', linewidth=0.5) +
+#   scale_fill_gradient(low='white', high='darkred',
+#                       guide = guide_legend(title="", direction = "horizontal", title.position = "bottom",
+#                                            label.position = "bottom", override.aes = list(alpha = 0))) +
+#   theme_void() + theme(legend.position = "bottom", legend.text = element_text(colour = "transparent")) + coord_equal()
+# # Show
+# plt_Gbound
+
+# Get maps from stadia
+counties_bbox <- unname(st_bbox(st_transform(sf_counties, 4326)))
+counties_map <- sf_ggmap(get_map(counties_bbox, maptype = "stamen_terrain", source = "stadia", crop = F))
+sf_counties_3857 <- st_transform(sf_counties, 3857)
+bound_sf_3857 <- st_transform(bound_sf, 3857)
+
+# PLOT - Posterior mean heatmap + detected boundaries
+plt_boundaries_mean <- ggmap(counties_map) +
+  geom_sf(data = sf_counties_3857, aes(fill=post_mean), col='gray25', alpha = 0.6, inherit.aes = F) +
+  scale_fill_gradient(low = 'steelblue', high = 'darkorange',
+                      guide = guide_colorbar("Post. Mean", direction = "horizontal", barwidth=unit(3,"in"),
+                                             title.position = "bottom", title.hjust = 0.5, label.vjust = 0.5)) +
+  geom_sf(data = bound_sf, col='darkred', linewidth = 0.3, inherit.aes = FALSE) +
+  theme_void() + theme(legend.position = "bottom")
+pdf(file.path(output_dir, "plt_boundaries_mean.pdf"), height = 4, width = 4); print(plt_boundaries_mean); dev.off()
+
+# PLOT - Posterior variance heatmap + detected boundaries
+plt_boundaries_var <- ggmap(counties_map) +
+  geom_sf(data = sf_counties_3857, aes(fill=post_var), col='gray25', alpha = 0.6, inherit.aes = FALSE) +
+  scale_fill_gradient(low = 'steelblue', high = 'darkorange',
+                      guide = guide_colorbar("Post. Variance", direction = "horizontal", barwidth=unit(3,"in"),
+                                             title.position = "bottom", title.hjust = 0.5, label.vjust = 0.5)) +
+  geom_sf(data = bound_sf, col='darkred', linewidth = 0.3, inherit.aes = FALSE) +
+  theme_void() + theme(legend.position = "bottom")
+pdf(file.path(output_dir, "plt_boundaries_var.pdf"), height = 4, width = 4); print(plt_boundaries_var); dev.off()
+
+# PLOT - Empirical mean in each PUMA on the map
+plt_emp_mean <- ggmap(counties_map) +
+  geom_sf(data = sf_counties_3857, aes(fill=emp_mean), col='gray25', alpha = 0.6, inherit.aes = F) +
+  scale_fill_gradient(low = 'steelblue', high = 'darkorange',
+                      guide = guide_colourbar(title = "Empirical Mean", direction = "horizontal", barwidth = unit(3, "in"),
+                                              title.position = "bottom", title.hjust = 0.5)) +
+  theme_void() + theme(legend.position = "bottom")
+pdf(file.path(output_dir, "plt_emp_mean.pdf"), height = 4, width = 4); print(plt_emp_mean); dev.off()
+
+# PLOT - Empirical variance in each PUMA on the map
+plt_emp_var <- ggmap(counties_map) +
+  geom_sf(data = sf_counties_3857, aes(fill=emp_var), col='gray25', alpha = 0.6, inherit.aes = FALSE) +
+  scale_fill_gradient(low = 'steelblue', high = 'darkorange',
+                      guide = guide_colourbar(title = "Empirical Variance", direction = "horizontal", barwidth = unit(3, "in"),
+                                              title.position = "bottom", title.hjust = 0.5)) +
+  theme_void() + theme(legend.position = "bottom")
+pdf(file.path(output_dir, "plt_emp_var.pdf"), height = 4, width = 4); print(plt_emp_var); dev.off()
+
+# PLOT - Empirical density histogram in bordering areas
+areas <- c(30,46,45);
+areas_names <- c("Hancock Park & Mid-Wilshire", "U.S.C. & Exposition Park", "East Vernon")
+df_hist <- data.frame("logPINCP"=numeric(0), "PUMA"=numeric(0))
+df_dens <- data.frame("x"=numeric(0), "y"=numeric(0), "PUMA"=numeric(0))
+for (i in 1:length(areas)) {
+  to_add <- data.frame("logPINCP" = data[[areas[i]]],
+                       "PUMA" = rep(areas_names[i], length(data[[areas[i]]])))
+  df_hist <- rbind(df_hist, to_add)
+  to_add <- data.frame("x" = x,
+                       "y" = colMeans(estimated_densities[[areas[i]]]),
+                       "PUMA" = rep(areas_names[i], length(x)))
+  df_dens <- rbind(df_dens, to_add)
+}
+df_hist$PUMA <- factor(df_hist$PUMA, levels = areas_names)
+df_dens$PUMA <- factor(df_dens$PUMA, levels = areas_names)
+plt_DensCompare <- ggplot() +
+  geom_density_ridges(data = df_hist, aes(x=logPINCP, y=PUMA, height=after_stat(ndensity), fill=PUMA, color=PUMA, scale=1.5), stat="binline", bins=10, alpha=0.4, show.legend = F) +
+  geom_ridgeline(data=df_dens, aes(x=x, y=PUMA, height=y, color=PUMA), scale=4.5, fill=NA, linewidth = 1.2, show.legend = F) + #, size=1.2, show.legend = F) +
+  scale_y_discrete(expand = c(0.05,0,1,0)) +
+  scale_color_manual(NULL, values = c('darkorange', "steelblue", 'forestgreen')) +
+  scale_fill_manual(NULL, values = c('darkorange', "steelblue", 'forestgreen')) +
+  xlab("log(PINCP)") + ylab("Density") + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+pdf(file.path(output_dir, "plt_DensCompare.pdf"), height = 4, width = 4); print(plt_DensCompare); dev.off()
+
+# PLOT - Zoom on the map
+zoom_bbox <- unname(st_bbox(st_transform(sf_counties[areas,], 4326)))
+xc <- zoom_bbox[1] + .5*(zoom_bbox[3]-zoom_bbox[1])
+yc <- zoom_bbox[2] + .5*(zoom_bbox[4]-zoom_bbox[2])
+zoom_bbox <- c(xc - 0.075, yc - 0.075, xc + 0.075, yc + 0.075)
+zoom_map <- sf_ggmap(get_map(zoom_bbox, maptype = "stamen_terrain", source = "stadia", crop = F))
+names_zoom <- data.frame("PUMA" = areas_names, st_coordinates(st_centroid(st_geometry(sf_counties_3857[areas, ]))))
+names_zoom$PUMA <- factor(names_zoom$PUMA, levels = areas_names)#, levels = c("U.S.C. & Exposition Park", "Hancock Park & Mid-Wilshire", "West Hollywood & Beverly Hills"))
+plt_zoom <- ggmap(zoom_map) +
+  geom_sf(data = sf_counties_3857, fill=NA, col='gray25', linewidth=0.7, inherit.aes = F) +
+  geom_sf(data = sf_counties_3857[areas, ], aes(fill=PUMA), col='gray25', alpha = 0.5, linewidth = 1.4, show.legend = F, inherit.aes = F) +
+  geom_sf(data = bound_sf_3857, fill=NA, col='darkred', linewidth=1.4, inherit.aes = F) +
+  scale_fill_manual(values = c("03730"='darkorange',"03746"='steelblue',"03745"='forestgreen')) +
+  geom_label_repel(data = names_zoom, aes(x=X, y=Y, label=PUMA, color=PUMA), inherit.aes = F, show.legend = F) +
+  scale_color_manual(values = c('darkorange', 'steelblue', 'forestgreen')) + theme_void()
+pdf(file.path(output_dir, "plt_zoom.pdf"), height = 4, width = 4); print(plt_zoom); dev.off()
+
+# Final log
+cat(sprintf("All plots have been generated and saved in %s directory\n", output_dir))
+
+# # ---- END OF SCRIPT ---- # #
