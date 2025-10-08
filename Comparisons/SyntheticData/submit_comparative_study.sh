@@ -22,11 +22,11 @@ in-apptainer () {
 }
 export -f in-apptainer
 
-# Define models to compare
-MODELS=(SPMIX CARBayes naiveMCAR SKATER)
-
 # Create log directory if it doesn't exist
 mkdir -p log
+
+# Define models to compare
+MODELS=(SPMIX CARBayes naiveMCAR SKATER)
 
 # Run comparative study for each model
 parallel -j 0 'in-apptainer cook exec run_{1} &> log/run_{1}.log' ::: "${MODELS[@]}"
