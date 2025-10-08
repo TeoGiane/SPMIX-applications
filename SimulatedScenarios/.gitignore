@@ -1,7 +1,9 @@
 # Ignored files
 .Rhistory
 .RData
+*.Rmd
 
 # Ignored folders
 output/
 plots/
+run*/
