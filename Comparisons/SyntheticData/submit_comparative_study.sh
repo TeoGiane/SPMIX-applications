@@ -3,7 +3,7 @@
 # PBS Settings
 #PBS -S /bin/bash
 #PBS -l select=1:ncpus=96
-#PBS -l walltime=504:00:00
+#PBS -l walltime=24:00:00
 #PBS -N SyntheticData-comparative_study
 #PBS -o log/SyntheticData-comparative_study.out
 #PBS -e log/SyntheticData-comparative_study.err
