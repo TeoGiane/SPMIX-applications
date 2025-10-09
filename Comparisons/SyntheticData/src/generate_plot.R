@@ -176,15 +176,15 @@ for(model in models){
   # PLOT - boundaries on the map in red + group
   plt_boundaries <- ggplot() +
     geom_sf(data = grid_sf, aes(fill=Group), col='gray25', alpha = 0.6, linewidth=0.4) +
-    scale_fill_manual(values = c("steelblue","darkorange"), labels = c("Student's t", "Skew Normal"),
-                      guide = guide_legend(title = "Data Generating Distribution", title.hjust = 0.5, label.position = "bottom",
-                                          direction = "horizontal", title.position = "bottom", keywidth = unit(0.8,"in"))) +
+    scale_fill_manual(values = c("steelblue","darkorange"), labels = c("(i)", "(ii)"),
+                      guide = guide_legend(title = NULL, title.hjust = 0.5, label.position = "bottom",
+                                          direction = "horizontal", title.position = "bottom")) +
     theme_void() + theme(legend.position = "bottom")
   if(!all(is.na(Gb))) {
     plt_boundaries <- plt_boundaries +
       geom_sf(data = bound_sf, fill=NA, col='darkred', linewidth=1.2)
   }
-  pdf(file.path(output_dir, paste0("plt_boundaries-", model, ".pdf")), height = 4, width = 4); print(plt_boundaries); dev.off()
+  pdf(file.path(output_dir, paste0("plt_boundaries-", model, ".pdf")), height = 2, width = 2); print(plt_boundaries); dev.off()
   
   # PLOT - plinks matrix and with boundary edges in red
   if (model != "SKATER") {
@@ -201,7 +201,7 @@ for(model in models){
       plt_plinks <- plt_plinks +
         geom_tile(data = Gb_df, aes(x=x,y=y), fill=NA, col='darkred', linewidth=0.5)
     }
-    pdf(file.path(output_dir, paste0("plt_plinks-", model, ".pdf")), height = 4, width = 4); print(plt_plinks); dev.off()
+    pdf(file.path(output_dir, paste0("plt_plinks-", model, ".pdf")), height = 2, width = 2); print(plt_plinks); dev.off()
   }
 
 }
