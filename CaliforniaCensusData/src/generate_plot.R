@@ -4,6 +4,8 @@
 suppressMessages(library("argparser"))
 opt_parser <- arg_parser(name = "generate_plot", hide.opts = TRUE,
                          description = "Generate plots for the analysis of the California Census Dataset")
+opt_parser <- add_argument(opt_parser, arg = "--data-file", type = "character", default = NULL,
+                           help = "Relative path to the data file to use.")
 opt_parser <- add_argument(opt_parser, arg = "--sim-file", type = "character", default = NULL,
                            help = "Relative path to the simulation file to use.")
 opt_parser <- add_argument(opt_parser, arg = "--output-dir", type = "character", default = "plots",
@@ -27,9 +29,14 @@ input_dir <- file.path(getwd(), "input")
 if (!dir.exists(input_dir)) {
   stop(sprintf("Input directory '%s' does not exists.", input_dir))
 }
-cat("Input Directory: ", input_dir, "\n") # Log
 
-# Check if simulation requested existsT
+# Check if data file exists
+data_file <- file.path(getwd(), extra_args$data_file)
+if(!file.exists(data_file)){
+  stop(sprintf("Data file '%s' does not exists.", data_file))
+}
+
+# Check if simulation requested exists
 sim_file <- file.path(getwd(), extra_args$sim_file)
 if(!file.exists(sim_file)){
   stop(sprintf("Simulation '%s' does not exists.", sim_file))
@@ -51,6 +58,9 @@ suppressMessages(library("sf"))
 suppressMessages(library("spdep"))
 suppressMessages(library("SPMIX"))
 suppressMessages(library("dplyr"))
+
+# Register Stadia Map API key
+# register_stadiamaps(key = )
 
 # Functions
 sf_ggmap <- function(map) {
@@ -74,50 +84,38 @@ sf_ggmap <- function(map) {
   return(map)
 }
 
-boundary_geometry <- function(boundary_graph, sf_geometry) {
-  # Check
-  if(!inherits(sf_geometry, "sf")) { stop("'sf_geometry' must be an sf object") }
-  
-  # Add id column
+boundary_geometry <- function(boundary_list, sf_geometry) {
+  if (!inherits(sf_geometry, "sf")) {
+    stop("'sf_geometry' must be an sf object")
+  }
   if(!("id" %in% names(sf_geometry))){
     sf_geometry$id <- 1:nrow(sf_geometry)
   }
-  
-  # Generate boundary list using upper-triangular view of boundary_graph
-  boundary_graph[lower.tri(boundary_graph)] <- NA
-  boundary_list <- apply(boundary_graph, 1, function(x){which(x==1)})
-  
+
   # Create empty list
-  geom_bdd <- list(); k <- 1
+  geom_bdd <- list()
+
   for(i in 1:nrow(sf_geometry)) {
-    for (j in (boundary_list[[i]])) {
-      # Compute boundary geometry between i and j
-      sel_geom <- sf_geometry[c(i,j), c("id", "geometry")]
+    # Get current area and its boundaries
+    if (length(boundary_list[[i]]) > 0) {
+      sel_geom <- sf_geometry[c(i, boundary_list[[i]]), ]
+
+      # Compute geometry of boundary
       bounds <- suppressWarnings(st_intersection(sel_geom, sel_geom))
       bounds <- st_geometry(bounds[bounds$id != bounds$id.1, ])
-      # Append to list
-      geom_bdd[[k]] <- st_sf(geometry = bounds); k <- k+1
+
+      # Add to list
+      geom_bdd[[i]] <- st_sf(geometry = bounds)
     }
-    
-    # Get current area and its boundaries
-    # sel_geom <- sf_geometry[c(i, boundary_list[[i]]), c("id", "geometry")]
-    
-    # Compute geometry of boundary
-    # bounds <- suppressWarnings(st_intersection(sel_geom, sel_geom))
-    # bounds <- st_geometry(bounds[bounds$id != bounds$id.1, ])
-    
-    # Add to list
-    # geom_bdd[[i]] <- st_sf(geometry = bounds)
   }
-  
   geom_bdd <- do.call(rbind, geom_bdd)
-  
+
   # Drop points if present
   points <- which(attr(geom_bdd$geometry, "classes") == "POINT")
   if(length(points) > 0){
     geom_bdd <- geom_bdd[-points, ]
   }
-  
+
   # Condense everything into a unique sf object and return
   return(geom_bdd)
 }
@@ -128,37 +126,27 @@ L1_distance <- function(y1, y2, x) {
 }
 
 # Import shapefile
-sf_folder <- file.path(getwd(), "data", "counties-pumas")
-sf_counties <- read_sf(file.path(sf_folder, "counties-pumas.shp"))
-
-# Compute adjacency list and matrix
+sf_file <- file.path(input_dir, "counties-pumas", "counties-pumas.shp")
+sf_counties <- read_sf(sf_file)
 adj_list <- poly2nb(sf_counties, queen = FALSE)
 W <- nb2mat(adj_list, style = "B")
+cat(sprintf("Shapefiles imported from: %s\n", sf_file)) # log
 
 # Import data
-# load("data/data_001.dat")
-
-# Import data and adjacency matrix (OLD)
-# load("data/clean_data.dat")
-# load("data/adj_matrix.dat")
-# adj_list <- apply(W, 1, function(x){which(x==1)})
-
-cat("Shapefiles have been imported\n") # log
-
-# out_file = file.path(sim_folder, "chain_001.dat")
-# out_file = file.path(sim_folder, "chain_full_dataset.dat")
+load(data_file)
+cat(sprintf("Data imported from: %s\n", data_file)) # log
 
 # Load output
 load(sim_file)
-cat(sprintf("Loaded chain: %s\n", sim_file)) # log
+cat(sprintf("MCMC chain imported from: %s\n", sim_file)) # log
 
 # Deserialization
 chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
 H_chain <- sapply(chains, function(x) x$num_components)
 G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
-Nedge_chain <- sapply(G_chain, function(x){sum(x[upper.tri(x)])}); mcmcse::ess(Nedge_chain)
-sigma_chain <- sapply(chains, function(x){x$Sigma$data[1]}); mcmcse::ess(sigma_chain)
-p_chain <- sapply(chains, function(x){x$p}); mcmcse::ess(p_chain)
+Nedge_chain <- sapply(G_chain, function(x){sum(x[upper.tri(x)])})
+sigma_chain <- sapply(chains, function(x){x$Sigma$data[1]})
+p_chain <- sapply(chains, function(x){x$p})
 
 # Compute posterior mean and variance for each PUMA
 means_chain <- lapply(chains, function(x) sapply(x$atoms, function(y) y$mean))
@@ -180,7 +168,7 @@ sf_counties$post_var <- apply(post_vars, 1, mean)
 
 # Compute estimated density
 x <- seq(range(data)[1], range(data)[2], length.out = 500)
-estimated_densities <- ComputeDensities(chains, x, verbose = TRUE)
+# estimated_densities <- ComputeDensities(chains, x, verbose = TRUE)
 
 # Compute admissible edges
 Eadj <- which(W == 1, arr.ind = TRUE)
@@ -189,82 +177,81 @@ Eadj <- which(W == 1, arr.ind = TRUE)
 plinks <- Reduce('+', G_chain)/length(G_chain)
 plinks[which(W == 0, arr.ind = TRUE)] <- NA
 
-# Threshold -> posterior median of p
-gamma_graph <- 0.5
-
 # Compute neighbouring graph
 Gn <- matrix(NA, nrow(plinks), ncol(plinks))
-Gn[Eadj] <- ifelse(plinks[Eadj] >= gamma_graph, 1, NA)
+Gn[Eadj] <- ifelse(plinks[Eadj] >= 0.5, 1, NA)
+neigh_list <- apply(Gn, 1, function(x){which(x==1)})
 
 # Compute boundary graph
 Gb <- matrix(NA, nrow(plinks), ncol(plinks))
-Gb[Eadj] <- ifelse(plinks[Eadj] < gamma_graph, 1, NA)
+Gb[Eadj] <- ifelse(plinks[Eadj] < 0.5, 1, NA)
 
 # Compute boundary geometry
-bound_sf <- boundary_geometry(Gb, sf_counties)
-
-# Compute neighbouring and boundary adjacency lists
-neigh_list <- apply(Gn, 1, function(x){which(x==1)})
-bound_list <- apply(Gb, 1, function(x){which(x==1)})
+if(!all(is.na(Gb))){
+  bound_list <- apply(Gb, 1, function(x){which(x == 1)})
+  bound_sf <- boundary_geometry(bound_list, sf_counties)
+} else {
+  cat("No Boundaries have been found\n")
+}
 
 # L1 distance between areas - Local Comparison
-L1 <- data.frame("bounds" = rep(NA, nrow(sf_counties)),
-                 "no_bounds" = rep(NA, nrow(sf_counties)))
-for (i in 1:nrow(sf_counties)) {
-  p <- colMeans(estimated_densities[[i]])
-  q_b <- lapply(estimated_densities[bound_list[[i]]], function(x) { colMeans(x) })
-  q_nb <- lapply(estimated_densities[neigh_list[[i]]], function(x) { colMeans(x) })
-  if(length(q_b) > 0) {
-    L1[i, "bounds"] <- mean(sapply(q_b, function(y){ L1_distance(p, y, x) }))
-  }
-  if(length(q_nb) > 0) {
-    L1[i, "no_bounds"] <- mean(sapply(q_nb, function(y){ L1_distance(p, y, x) }))
-  }
-}
+# L1 <- data.frame("bounds" = rep(NA, nrow(sf_counties)),
+#                  "no_bounds" = rep(NA, nrow(sf_counties)))
+# for (i in 1:nrow(sf_counties)) {
+#   p <- colMeans(estimated_densities[[i]])
+#   q_b <- lapply(estimated_densities[bound_list[[i]]], function(x) { colMeans(x) })
+#   q_nb <- lapply(estimated_densities[neigh_list[[i]]], function(x) { colMeans(x) })
+#   if(length(q_b) > 0) {
+#     L1[i, "bounds"] <- mean(sapply(q_b, function(y){ L1_distance(p, y, x) }))
+#   }
+#   if(length(q_nb) > 0) {
+#     L1[i, "no_bounds"] <- mean(sapply(q_nb, function(y){ L1_distance(p, y, x) }))
+#   }
+# }
 
 # PLOT - boxplot comparison (local)
-L1loc <- rbind(data.frame("Dist" = L1$no_bounds, "Type" = "Neigh"),
-               data.frame("Dist" = L1$bounds, "Type" = "Bound"))
-L1loc$Type <- as.factor(L1loc$Type)
-L1loc <- na.omit(L1loc)
-plt_L1loc <- ggplot() +
-  geom_boxplot(data = L1loc, aes(x=Type, y=Dist)) +
-  geom_boxplot(data = L1loc, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
-  scale_x_discrete(labels = c(bquote(d[FM^{loc}]), bquote(d[TM^{loc}]))) + labs(x=NULL,y=NULL) +
-  scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
-  scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
-  theme(text = element_text(size = 14))
-pdf(file.path(output_dir, "plt_L1loc.pdf"), height = 3, width = 4); print(plt_L1loc); dev.off()
+# L1loc <- rbind(data.frame("Dist" = L1$no_bounds, "Type" = "Neigh"),
+#                data.frame("Dist" = L1$bounds, "Type" = "Bound"))
+# L1loc$Type <- as.factor(L1loc$Type)
+# L1loc <- na.omit(L1loc)
+# plt_L1loc <- ggplot() +
+#   geom_boxplot(data = L1loc, aes(x=Type, y=Dist)) +
+#   geom_boxplot(data = L1loc, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
+#   scale_x_discrete(labels = c(bquote(d[FM^{loc}]), bquote(d[TM^{loc}]))) + labs(x=NULL,y=NULL) +
+#   scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
+#   scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
+#   theme(text = element_text(size = 14))
+# pdf(file.path(output_dir, "plt_L1loc.pdf"), height = 3, width = 4); print(plt_L1loc); dev.off()
 
 # L1 distance between areas - Global Comparison
-Gn_up <- Gn; Gn_up[lower.tri(Gn_up)] <- NA
-neigh_pairs <- which(Gn_up == 1, arr.ind = T)
-Gb_up <- Gb; Gb_up[lower.tri(Gb_up)] <- NA
-bound_pairs <- which(Gb_up == 1, arr.ind = T)
-L1_neigh <- data.frame("Type" = rep("Neigh", nrow(neigh_pairs)),
-                       "Dist" = rep(NA, nrow(neigh_pairs)))
-for (i in 1:nrow(neigh_pairs)) {
-  L1_neigh$Dist[i] <- L1_distance(colMeans(estimated_densities[[neigh_pairs[i,1]]]),
-                                  colMeans(estimated_densities[[neigh_pairs[i,2]]]), x)
-}
-L1_bound <- data.frame("Type" = rep("Bound", nrow(bound_pairs)),
-                       "Dist" = rep(NA, nrow(bound_pairs)))
-for (i in 1:nrow(bound_pairs)) {
-  L1_bound$Dist[i] <- L1_distance(colMeans(estimated_densities[[bound_pairs[i,1]]]),
-                                  colMeans(estimated_densities[[bound_pairs[i,2]]]), x)
-}
+# Gn_up <- Gn; Gn_up[lower.tri(Gn_up)] <- NA
+# neigh_pairs <- which(Gn_up == 1, arr.ind = T)
+# Gb_up <- Gb; Gb_up[lower.tri(Gb_up)] <- NA
+# bound_pairs <- which(Gb_up == 1, arr.ind = T)
+# L1_neigh <- data.frame("Type" = rep("Neigh", nrow(neigh_pairs)),
+#                        "Dist" = rep(NA, nrow(neigh_pairs)))
+# for (i in 1:nrow(neigh_pairs)) {
+#   L1_neigh$Dist[i] <- L1_distance(colMeans(estimated_densities[[neigh_pairs[i,1]]]),
+#                                   colMeans(estimated_densities[[neigh_pairs[i,2]]]), x)
+# }
+# L1_bound <- data.frame("Type" = rep("Bound", nrow(bound_pairs)),
+#                        "Dist" = rep(NA, nrow(bound_pairs)))
+# for (i in 1:nrow(bound_pairs)) {
+#   L1_bound$Dist[i] <- L1_distance(colMeans(estimated_densities[[bound_pairs[i,1]]]),
+#                                   colMeans(estimated_densities[[bound_pairs[i,2]]]), x)
+# }
 
 # PLOT - boxplot comparison (global)
-L1glob <- rbind(L1_neigh, L1_bound); rm(L1_neigh, L1_bound)
-L1glob$Type <- as.factor(L1glob$Type)
-plt_L1glob <- ggplot() +
-  geom_boxplot(data = L1glob, aes(x=Type, y=Dist)) +
-  geom_boxplot(data = L1glob, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
-  scale_x_discrete(labels = c(bquote(d[FM]), bquote(d[TM]))) + labs(x=NULL,y=NULL) +
-  scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
-  scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
-  theme(text = element_text(size = 14))
-pdf(file.path(output_dir, "plt_L1glob.pdf"), height = 3, width = 4); print(plt_L1glob); dev.off()
+# L1glob <- rbind(L1_neigh, L1_bound); rm(L1_neigh, L1_bound)
+# L1glob$Type <- as.factor(L1glob$Type)
+# plt_L1glob <- ggplot() +
+#   geom_boxplot(data = L1glob, aes(x=Type, y=Dist)) +
+#   geom_boxplot(data = L1glob, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
+#   scale_x_discrete(labels = c(bquote(d[FM]), bquote(d[TM]))) + labs(x=NULL,y=NULL) +
+#   scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
+#   scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
+#   theme(text = element_text(size = 14))
+# pdf(file.path(output_dir, "plt_L1glob.pdf"), height = 3, width = 4); print(plt_L1glob); dev.off()
 
 # PLOT - Traceplot of |G|
 df <- data.frame("Iteration" = 1:length(Nedge_chain), "Value" = Nedge_chain)
@@ -293,15 +280,17 @@ pdf(file.path(output_dir, "plt_postH.pdf"), height = 4, width = 4); print(plot_p
 
 # PLOT - plinks matrix and with boundary edges in red
 plinks_df <- reshape2::melt(plinks, c("x", "y"), value.name="PPI") %>% na.omit()
-Gb_df <- reshape2::melt(Gb, c("x","y"), value.name="Gb") %>% na.omit()
+Gb_df <- reshape2::melt(Gb, c("x", "y"), value.name="Gb") %>% na.omit()
 plt_plinks <- ggplot() +
   geom_tile(data = plinks_df, aes(x=x, y=y, fill=PPI), width=1, height=1) +
   geom_rect(aes(xmin=0.5, xmax=nrow(plinks)+0.5, ymin=0.5, ymax=nrow(plinks)+0.5), fill=NA, color="gray25", linewidth=0.5) +
   scale_fill_gradient2(low='steelblue4', mid = "white", high = 'darkorange', midpoint = 0.5, na.value = 'white',
                        guide = guide_colorbar("Post. Prob. of Inclusion", position = "bottom", direction = "horizontal", barwidth=unit(2.5,"in"),
                                               title.position = "bottom", title.hjust = 0.5, label.vjust = 0.5)) +
-  geom_tile(data = Gb_df, aes(x=x,y=y), fill=NA, col='darkred', linewidth=0.5) +
   theme_void() + theme(legend.position = "bottom") + coord_equal()
+if(!all(is.na(Gb))){
+  plt_plinks <- plt_plinks + geom_tile(data = Gb_df, aes(x=x,y=y), fill=NA, col='darkred', linewidth=0.5)
+}
 pdf(file.path(output_dir, "plt_plinks.pdf"), height = 4, width = 4); print(plt_plinks); dev.off()
 
 # # PLOT - Posterior Summary graph
@@ -344,8 +333,11 @@ plt_boundaries_mean <- ggmap(counties_map) +
   scale_fill_gradient(low = 'steelblue', high = 'darkorange',
                       guide = guide_colorbar("Post. Mean", direction = "horizontal", barwidth=unit(3,"in"),
                                              title.position = "bottom", title.hjust = 0.5, label.vjust = 0.5)) +
-  geom_sf(data = bound_sf, col='darkred', linewidth = 0.3, inherit.aes = FALSE) +
   theme_void() + theme(legend.position = "bottom")
+if(!all(is.na(Gb))){
+  plt_boundaries_mean <- plt_boundaries_mean +
+    geom_sf(data = bound_sf, col='darkred', linewidth = 0.3, inherit.aes = FALSE)
+}
 pdf(file.path(output_dir, "plt_boundaries_mean.pdf"), height = 4, width = 4); print(plt_boundaries_mean); dev.off()
 
 # PLOT - Posterior variance heatmap + detected boundaries
@@ -354,8 +346,11 @@ plt_boundaries_var <- ggmap(counties_map) +
   scale_fill_gradient(low = 'steelblue', high = 'darkorange',
                       guide = guide_colorbar("Post. Variance", direction = "horizontal", barwidth=unit(3,"in"),
                                              title.position = "bottom", title.hjust = 0.5, label.vjust = 0.5)) +
-  geom_sf(data = bound_sf, col='darkred', linewidth = 0.3, inherit.aes = FALSE) +
   theme_void() + theme(legend.position = "bottom")
+if(!all(is.na(Gb))){
+  plt_boundaries_var <- plt_boundaries_var +
+    geom_sf(data = bound_sf, col='darkred', linewidth = 0.3, inherit.aes = FALSE)
+}
 pdf(file.path(output_dir, "plt_boundaries_var.pdf"), height = 4, width = 4); print(plt_boundaries_var); dev.off()
 
 # PLOT - Empirical mean in each PUMA on the map
