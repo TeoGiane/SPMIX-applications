@@ -4,9 +4,9 @@
 #PBS -S /bin/bash
 #PBS -l select=1:ncpus=1:mem=64gb
 #PBS -l walltime=144:00:00
-#PBS -N SPMIX-CaliforniaCensusData-run_full_dataset
-#PBS -o log/SPMIX-CaliforniaCensusData-run_full_dataset.out
-#PBS -e log/SPMIX-CaliforniaCensusData-run_full_dataset.err
+#PBS -N SPMIX-CaliforniaCensusData-generate_plots
+#PBS -o log/SPMIX-CaliforniaCensusData-generate_plots.out
+#PBS -e log/SPMIX-CaliforniaCensusData-generate_plots.err
 
 # Set current working directory
 cd ${PBS_O_WORKDIR}
