@@ -2,7 +2,7 @@
 
 # PBS Settings
 #PBS -S /bin/bash
-#PBS -l select=1:ncpus=1:mem=64gb
+#PBS -l select=1:ncpus=1:mem=128gb
 #PBS -l walltime=24:00:00
 #PBS -N SPMIX-CaliforniaCensusData-generate_plots
 #PBS -o log/SPMIX-CaliforniaCensusData-generate_plots.out
