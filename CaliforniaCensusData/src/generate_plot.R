@@ -168,7 +168,7 @@ sf_counties$post_var <- apply(post_vars, 1, mean)
 
 # Compute estimated density
 x <- seq(range(data)[1], range(data)[2], length.out = 500)
-# estimated_densities <- ComputeDensities(chains, x, verbose = TRUE)
+estimated_densities <- ComputeDensities(chains, x, verbose = TRUE)
 
 # Compute admissible edges
 Eadj <- which(W == 1, arr.ind = TRUE)
@@ -195,63 +195,63 @@ if(!all(is.na(Gb))){
 }
 
 # L1 distance between areas - Local Comparison
-# L1 <- data.frame("bounds" = rep(NA, nrow(sf_counties)),
-#                  "no_bounds" = rep(NA, nrow(sf_counties)))
-# for (i in 1:nrow(sf_counties)) {
-#   p <- colMeans(estimated_densities[[i]])
-#   q_b <- lapply(estimated_densities[bound_list[[i]]], function(x) { colMeans(x) })
-#   q_nb <- lapply(estimated_densities[neigh_list[[i]]], function(x) { colMeans(x) })
-#   if(length(q_b) > 0) {
-#     L1[i, "bounds"] <- mean(sapply(q_b, function(y){ L1_distance(p, y, x) }))
-#   }
-#   if(length(q_nb) > 0) {
-#     L1[i, "no_bounds"] <- mean(sapply(q_nb, function(y){ L1_distance(p, y, x) }))
-#   }
-# }
+L1 <- data.frame("bounds" = rep(NA, nrow(sf_counties)),
+                 "no_bounds" = rep(NA, nrow(sf_counties)))
+for (i in 1:nrow(sf_counties)) {
+  p <- colMeans(estimated_densities[[i]])
+  q_b <- lapply(estimated_densities[bound_list[[i]]], function(x) { colMeans(x) })
+  q_nb <- lapply(estimated_densities[neigh_list[[i]]], function(x) { colMeans(x) })
+  if(length(q_b) > 0) {
+    L1[i, "bounds"] <- mean(sapply(q_b, function(y){ L1_distance(p, y, x) }))
+  }
+  if(length(q_nb) > 0) {
+    L1[i, "no_bounds"] <- mean(sapply(q_nb, function(y){ L1_distance(p, y, x) }))
+  }
+}
 
 # PLOT - boxplot comparison (local)
-# L1loc <- rbind(data.frame("Dist" = L1$no_bounds, "Type" = "Neigh"),
-#                data.frame("Dist" = L1$bounds, "Type" = "Bound"))
-# L1loc$Type <- as.factor(L1loc$Type)
-# L1loc <- na.omit(L1loc)
-# plt_L1loc <- ggplot() +
-#   geom_boxplot(data = L1loc, aes(x=Type, y=Dist)) +
-#   geom_boxplot(data = L1loc, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
-#   scale_x_discrete(labels = c(bquote(d[FM^{loc}]), bquote(d[TM^{loc}]))) + labs(x=NULL,y=NULL) +
-#   scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
-#   scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
-#   theme(text = element_text(size = 14))
-# pdf(file.path(output_dir, "plt_L1loc.pdf"), height = 3, width = 4); print(plt_L1loc); dev.off()
+L1loc <- rbind(data.frame("Dist" = L1$no_bounds, "Type" = "Neigh"),
+               data.frame("Dist" = L1$bounds, "Type" = "Bound"))
+L1loc$Type <- as.factor(L1loc$Type)
+L1loc <- na.omit(L1loc)
+plt_L1loc <- ggplot() +
+  geom_boxplot(data = L1loc, aes(x=Type, y=Dist)) +
+  geom_boxplot(data = L1loc, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
+  scale_x_discrete(labels = c(bquote(d[FM^{loc}]), bquote(d[TM^{loc}]))) + labs(x=NULL,y=NULL) +
+  scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
+  scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
+  theme(text = element_text(size = 14))
+pdf(file.path(output_dir, "plt_L1loc.pdf"), height = 3, width = 4); print(plt_L1loc); dev.off()
 
 # L1 distance between areas - Global Comparison
-# Gn_up <- Gn; Gn_up[lower.tri(Gn_up)] <- NA
-# neigh_pairs <- which(Gn_up == 1, arr.ind = T)
-# Gb_up <- Gb; Gb_up[lower.tri(Gb_up)] <- NA
-# bound_pairs <- which(Gb_up == 1, arr.ind = T)
-# L1_neigh <- data.frame("Type" = rep("Neigh", nrow(neigh_pairs)),
-#                        "Dist" = rep(NA, nrow(neigh_pairs)))
-# for (i in 1:nrow(neigh_pairs)) {
-#   L1_neigh$Dist[i] <- L1_distance(colMeans(estimated_densities[[neigh_pairs[i,1]]]),
-#                                   colMeans(estimated_densities[[neigh_pairs[i,2]]]), x)
-# }
-# L1_bound <- data.frame("Type" = rep("Bound", nrow(bound_pairs)),
-#                        "Dist" = rep(NA, nrow(bound_pairs)))
-# for (i in 1:nrow(bound_pairs)) {
-#   L1_bound$Dist[i] <- L1_distance(colMeans(estimated_densities[[bound_pairs[i,1]]]),
-#                                   colMeans(estimated_densities[[bound_pairs[i,2]]]), x)
-# }
+Gn_up <- Gn; Gn_up[lower.tri(Gn_up)] <- NA
+neigh_pairs <- which(Gn_up == 1, arr.ind = T)
+Gb_up <- Gb; Gb_up[lower.tri(Gb_up)] <- NA
+bound_pairs <- which(Gb_up == 1, arr.ind = T)
+L1_neigh <- data.frame("Type" = rep("Neigh", nrow(neigh_pairs)),
+                       "Dist" = rep(NA, nrow(neigh_pairs)))
+for (i in 1:nrow(neigh_pairs)) {
+  L1_neigh$Dist[i] <- L1_distance(colMeans(estimated_densities[[neigh_pairs[i,1]]]),
+                                  colMeans(estimated_densities[[neigh_pairs[i,2]]]), x)
+}
+L1_bound <- data.frame("Type" = rep("Bound", nrow(bound_pairs)),
+                       "Dist" = rep(NA, nrow(bound_pairs)))
+for (i in 1:nrow(bound_pairs)) {
+  L1_bound$Dist[i] <- L1_distance(colMeans(estimated_densities[[bound_pairs[i,1]]]),
+                                  colMeans(estimated_densities[[bound_pairs[i,2]]]), x)
+}
 
 # PLOT - boxplot comparison (global)
-# L1glob <- rbind(L1_neigh, L1_bound); rm(L1_neigh, L1_bound)
-# L1glob$Type <- as.factor(L1glob$Type)
-# plt_L1glob <- ggplot() +
-#   geom_boxplot(data = L1glob, aes(x=Type, y=Dist)) +
-#   geom_boxplot(data = L1glob, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
-#   scale_x_discrete(labels = c(bquote(d[FM]), bquote(d[TM]))) + labs(x=NULL,y=NULL) +
-#   scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
-#   scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
-#   theme(text = element_text(size = 14))
-# pdf(file.path(output_dir, "plt_L1glob.pdf"), height = 3, width = 4); print(plt_L1glob); dev.off()
+L1glob <- rbind(L1_neigh, L1_bound); rm(L1_neigh, L1_bound)
+L1glob$Type <- as.factor(L1glob$Type)
+plt_L1glob <- ggplot() +
+  geom_boxplot(data = L1glob, aes(x=Type, y=Dist)) +
+  geom_boxplot(data = L1glob, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
+  scale_x_discrete(labels = c(bquote(d[FM]), bquote(d[TM]))) + labs(x=NULL,y=NULL) +
+  scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
+  scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
+  theme(text = element_text(size = 14))
+pdf(file.path(output_dir, "plt_L1glob.pdf"), height = 3, width = 4); print(plt_L1glob); dev.off()
 
 # PLOT - Traceplot of |G|
 df <- data.frame("Iteration" = 1:length(Nedge_chain), "Value" = Nedge_chain)
