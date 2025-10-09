@@ -80,4 +80,4 @@ generate_plot_action = ["Rscript", "src/generate_plot.R",
                         "--sim-file", "output/H_RJ/rho_0.95/full_dataset_chain.dat",
                         "--output-dir", "plots/H_RJ/rho_0.95/full_dataset"]
 create_task("generate_plot", action=generate_plot_action,
-            dependencies=run_full_dataset_targets + ["input/full_dataset.dat", "input/counties-pumas/counties-pumas.shp"])
+            dependencies=["input/full_dataset.dat", "input/counties-pumas/counties-pumas.shp"])
