@@ -109,7 +109,7 @@ params_template =
 params <- sprintf(params_template, H, extra_args$rho)
 
 # Run Spatial sampler
-out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = algo_type)
-if (exists("out")) {
+SPMIX_fit <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = algo_type)
+if (exists("SPMIX_fit")) {
   save(out, file = out_file)
 }
