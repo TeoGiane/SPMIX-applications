@@ -57,11 +57,11 @@ subsample_size = 100
 generate_data_action = ["Rscript", "src/generate_data.R",
                         "--num-datasets", num_datasets,
                         "--subsample-size", subsample_size]
-create_task("generate_data", action=generate_data_action,
-            dependencies=download_data_targets,
-            targets=["input/counties-pumas/counties-pumas.shp"] +
-                    [f"input/data_{i:03d}.dat" for i in range(1, num_datasets+1)] +
-                    ["input/adj_matrix.dat"])
+create_task("generate_data", action=generate_data_action)#,
+            # dependencies=download_data_targets,
+            # targets=["input/counties-pumas/counties-pumas.shp"] +
+            #         [f"input/data_{i:03d}.dat" for i in range(1, num_datasets+1)] +
+            #         ["input/adj_matrix.dat"])
 
 # Define run_full_dataset task
 run_full_dataset_action = ["Rscript", "src/run_sampler.R",
@@ -70,14 +70,14 @@ run_full_dataset_action = ["Rscript", "src/run_sampler.R",
                            "--output-file", "output/H_RJ/rho_0.95/full_dataset_chain.dat",
                            "input/full_dataset.dat"]
 run_full_dataset_targets = ["output/H_RJ/rho_0.95/full_dataset_chain.dat"]
-create_task("run_full_dataset", action=run_full_dataset_action,
-            dependencies=["input/full_dataset.dat"],
-            targets=run_full_dataset_targets)
+create_task("run_full_dataset", action=run_full_dataset_action)#,
+            # dependencies=["input/full_dataset.dat"],
+            # targets=run_full_dataset_targets)
 
 # Define generate_plot task
 generate_plot_action = ["Rscript", "src/generate_plot.R",
                         "--data-file", "input/full_dataset.dat",
                         "--sim-file", "output/H_RJ/rho_0.95/full_dataset_chain.dat",
                         "--output-dir", "plots/H_RJ/rho_0.95/full_dataset"]
-create_task("generate_plot", action=generate_plot_action,
-            dependencies=["input/full_dataset.dat", "input/counties-pumas/counties-pumas.shp"])
+create_task("generate_plot", action=generate_plot_action)#,
+            # dependencies=["input/full_dataset.dat", "input/counties-pumas/counties-pumas.shp"])
