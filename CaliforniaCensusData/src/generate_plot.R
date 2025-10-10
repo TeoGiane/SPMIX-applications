@@ -60,7 +60,10 @@ suppressMessages(library("SPMIX"))
 suppressMessages(library("dplyr"))
 
 # Register Stadia Map API key
-# register_stadiamaps(key = )
+register_stadiamaps(key = "1f3e613a-2adc-4c22-8bc9-901f1c33e05b")
+if(!has_stadiamaps_key()){
+  stop("Stadia Maps API key is not set")
+}
 
 # Functions
 sf_ggmap <- function(map) {
