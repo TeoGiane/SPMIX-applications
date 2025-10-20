@@ -144,7 +144,7 @@ load(sim_file)
 cat(sprintf("MCMC chain imported from: %s\n", sim_file)) # log
 
 # Deserialization
-chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
+chains <- sapply(SPMIX_fit, function(x) DeserializeSPMIXProto("UnivariateState",x))
 H_chain <- sapply(chains, function(x) x$num_components)
 G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
 Nedge_chain <- sapply(G_chain, function(x){sum(x[upper.tri(x)])})
