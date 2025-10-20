@@ -17,12 +17,17 @@ extra_args <- parse_args(opt_parser)
 
 # Preliminary checks ------------------------------------------------------
 
-# Find parent folder of current file and set working directory
-args <- commandArgs()
-basedir <- dirname(sub("--file=", "", args[grep("--file=", args)]))
-basedir <- normalizePath(file.path(getwd(), basedir))
-setwd(dirname(basedir))
-cat(sprintf("Current Directory: %s\n", getwd())) # Log
+# Set working directory relative to the script location
+if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
+    # Running in RStudio
+    setwd(dirname(dirname(rstudioapi::getSourceEditorContext()$path)))
+} else {
+    # Running from command line
+    initial.options <- commandArgs(trailingOnly = FALSE)
+    script.name <- sub("--file=", "", initial.options[grep("--file=", initial.options)])
+    setwd(dirname(dirname(script.name)))
+}
+cat("Setting working directory to: ", getwd(), "\n")
 
 # Check if data file exists
 data_file <- file.path(getwd(), extra_args$input_file)
@@ -70,8 +75,8 @@ load(data_file)
 load(adj_file)
 
 # Setting MCMC parameters
-burnin <- 20000
-niter <- 40000
+burnin <- 30000
+niter <- 10000
 thin <- 1
 
 # Set sampler parameters template
@@ -92,7 +97,7 @@ params_template =
 
   sigma {
     inv_gamma_prior {
-      alpha: 4
+      alpha: 6
       beta: 4
     }
   }
@@ -100,7 +105,7 @@ params_template =
   graph_params {
     beta_prior {
       a: 2
-      b: 93
+      b: 186
     }
   }
   "
@@ -111,5 +116,5 @@ params <- sprintf(params_template, H, extra_args$rho)
 # Run Spatial sampler
 SPMIX_fit <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = algo_type)
 if (exists("SPMIX_fit")) {
-  save(out, file = out_file)
+  save(SPMIX_fit, file = out_file)
 }
