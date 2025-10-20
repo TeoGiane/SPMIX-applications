@@ -1,6 +1,10 @@
 # Files to ignore
 .RData
 .RHistory
+*.dat
+*.pdf
+*.zip
+*.Rmd
 
 # Folders to ignore
 input/

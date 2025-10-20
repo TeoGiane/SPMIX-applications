@@ -86,8 +86,8 @@ params =
 
   sigma {
     inv_gamma_prior {
-      alpha: 2
-      beta: 2
+      alpha: 4
+      beta: 4
     }
   }
 
@@ -241,21 +241,23 @@ pdf("plt_postvar.pdf", height = 4, width = 4); print(plt_postvar); dev.off()
 # # Save
 # # pdf("plt_BDpostVar.pdf", height = 4, width = 4); plt_postvar; dev.off()
 #
-# # Plot - Empirical density histogram in bordering areas
-# areas <- c(3,4)
-# plt_areas <- list()
-# for (i in 1:length(areas)) {
-#   df <- data.frame("x" = data[[areas[i]]])
-#   plt_areas[[i]] <- ggplot(data = df, aes(x=x, y = after_stat(density))) +
-#     geom_histogram(col=NA, fill='white', bins = 10) +
-#     geom_histogram(col='steelblue', fill='steelblue', alpha = 0.4, bins = 10) +
-#     xlab("Data") + ylab("Density") + theme(plot.title = element_text(hjust = 0.5))
-# }
-# # Show plot
-# plt_areas[[1]]; plt_areas[[2]]
-# # Save plot
-# # pdf("output/plt_areas_empirical_3.pdf", height = 3, width = 3); plt_areas[[1]]; dev.off()
-# # pdf("output/plt_areas_empirical_4.pdf", height = 3, width = 3); plt_areas[[2]]; dev.off()
+# Plot - Empirical density histogram in bordering areas
+areas <- c(3,4)
+# x = seq(range(data)[1], range(data)[2], length.out)
+plt_areas <- list()
+for (i in 1:length(areas)) {
+  df <- data.frame("x" = data[[areas[i]]])
+  plt_areas[[i]] <- ggplot(data = df, aes(x=x, y = after_stat(density))) +
+    geom_histogram(col=NA, fill='white', bins = 50) +
+    geom_histogram(col='steelblue', fill='steelblue', alpha = 0.4, bins = 50) +
+    xlim(range(data[areas])) + ylim(0, 0.55) +
+    xlab("Data") + ylab("Density") + theme(plot.title = element_text(hjust = 0.5))
+}
+# Show plot
+plt_areas[[1]]; plt_areas[[2]]
+# Save plot
+pdf("plt_areas_3.pdf", height = 4, width = 4); plt_areas[[1]]; dev.off()
+pdf("plt_areas_4.pdf", height = 4, width = 4); plt_areas[[2]]; dev.off()
 #
 # # Plot - Empirical density histogram + Estimated density
 # plt_areasdens <- list()
