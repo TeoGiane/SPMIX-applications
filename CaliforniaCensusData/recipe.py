@@ -67,9 +67,9 @@ create_task("generate_data", action=generate_data_action)#,
 run_full_dataset_action = ["Rscript", "src/run_sampler.R",
                            "--num-components", "RJ",
                            "--rho", 0.95,
-                           "--output-file", "output/H_RJ/rho_0.95/full_dataset_chain.dat",
+                           "--output-file", "output/H_RJ/rho_0.95/strong_p/full_dataset_chain.dat",
                            "input/full_dataset.dat"]
-run_full_dataset_targets = ["output/H_RJ/rho_0.95/full_dataset_chain.dat"]
+run_full_dataset_targets = ["output/H_RJ/rho_0.95/strong_p/full_dataset_chain.dat"]
 create_task("run_full_dataset", action=run_full_dataset_action)#,
             # dependencies=["input/full_dataset.dat"],
             # targets=run_full_dataset_targets)
@@ -77,7 +77,7 @@ create_task("run_full_dataset", action=run_full_dataset_action)#,
 # Define generate_plot task
 generate_plot_action = ["Rscript", "src/generate_plot.R",
                         "--data-file", "input/full_dataset.dat",
-                        "--sim-file", "output/H_RJ/rho_0.95/full_dataset_chain.dat",
-                        "--output-dir", "plots/H_RJ/rho_0.95/full_dataset"]
+                        "--sim-file", "output/H_RJ/rho_0.95/strong_p/full_dataset_chain.dat",
+                        "--output-dir", "plots/H_RJ/rho_0.95/strong_p/full_dataset"]
 create_task("generate_plot", action=generate_plot_action)#,
             # dependencies=["input/full_dataset.dat", "input/counties-pumas/counties-pumas.shp"])
