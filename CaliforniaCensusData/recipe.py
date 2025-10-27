@@ -57,11 +57,10 @@ subsample_size = 100
 generate_data_action = ["Rscript", "src/generate_data.R",
                         "--num-datasets", num_datasets,
                         "--subsample-size", subsample_size]
-create_task("generate_data", action=generate_data_action)#,
-            # dependencies=download_data_targets,
-            # targets=["input/counties-pumas/counties-pumas.shp"] +
-            #         [f"input/data_{i:03d}.dat" for i in range(1, num_datasets+1)] +
-            #         ["input/adj_matrix.dat"])
+generate_data_targets = ["input/counties-pumas/counties-pumas.shp"] + \
+    [f"input/data_{i:03d}.dat" for i in range(1, num_datasets+1)] + \
+    ["input/adj_matrix.dat"]
+create_task("generate_data", action = generate_data_action, dependencies = download_data_targets, targets = generate_data_targets)
 
 # Define run_full_dataset task
 run_full_dataset_action = ["Rscript", "src/run_sampler.R",
