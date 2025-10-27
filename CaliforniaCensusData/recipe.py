@@ -67,12 +67,26 @@ create_task("generate_data", action=generate_data_action)#,
 run_full_dataset_action = ["Rscript", "src/run_sampler.R",
                            "--num-components", "RJ",
                            "--rho", 0.95,
-                           "--output-file", "output/H_RJ/rho_0.95/strong_p/full_dataset_chain.dat",
+                           "--output-file", "output/HRJ/rho0.95/alpha24_beta22/a2_b93/full_dataset_chain.dat",
                            "input/full_dataset.dat"]
-run_full_dataset_targets = ["output/H_RJ/rho_0.95/strong_p/full_dataset_chain.dat"]
+run_full_dataset_targets = ["output/HRJ/rho0.95/alpha24_beta22/a2_b93/full_dataset_chain.dat"]
 create_task("run_full_dataset", action=run_full_dataset_action)#,
             # dependencies=["input/full_dataset.dat"],
             # targets=run_full_dataset_targets)
+
+# Define run_full_dataset_fixed_p tasks
+p_values = [0.1, 0.2, 0.3, 0.4, 0.5]
+for p in p_values:
+    run_full_dataset_fixed_p_action = ["Rscript", "src/run_sampler_fixed_p.R",
+                                       "--num-components", "RJ",
+                                       "--rho", 0.95,
+                                       "--graph-sparsity", p,
+                                       "--output-file", f"output/HRJ/rho0.95/alpha24_beta22/p_{p}/full_dataset_chain.dat",
+                                       "input/full_dataset.dat"]
+    run_full_dataset_fixed_p_targets = [f"output/HRJ/rho0.95/alpha24_beta22/p_{p}/full_dataset_chain.dat"]
+    create_task(f"run_full_dataset_fixed_p_{p}", action=run_full_dataset_fixed_p_action)#,
+                # dependencies=["input/full_dataset.dat"],
+                # targets=run_full_dataset_fixed_p_targets)
 
 # Define generate_plot task
 generate_plot_action = ["Rscript", "src/generate_plot.R",
