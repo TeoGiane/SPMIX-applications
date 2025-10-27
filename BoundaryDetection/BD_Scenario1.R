@@ -188,7 +188,7 @@ if (exists("out")) {
 }
 
 # Deserialization
-chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
+chains <- sapply(out, function(x) DeserializeSPMIXProto("spmix.UnivariateState",x))
 H_chain <- sapply(chains, function(x) x$num_components)
 G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
 
