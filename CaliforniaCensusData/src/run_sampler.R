@@ -76,7 +76,7 @@ load(adj_file)
 
 # Setting MCMC parameters
 burnin <- 30000
-niter <- 10000
+niter <- 20000
 thin <- 1
 
 # Set sampler parameters template
@@ -97,15 +97,15 @@ params_template =
 
   sigma {
     inv_gamma_prior {
-      alpha: 6
-      beta: 4
+      alpha: 24
+      beta: 22
     }
   }
 
   graph_params {
     beta_prior {
       a: 2
-      b: 186
+      b: 93
     }
   }
   "
