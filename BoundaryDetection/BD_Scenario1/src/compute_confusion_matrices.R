@@ -1,23 +1,33 @@
+# # ---- BD SCENARIO 1 - COMPUTE CONFUSION MATRICES ---- # #
+
 # Command line input options via argparser
 suppressMessages(library("argparser"))
 opt_parser <- arg_parser(name = "compare_boundary_graph", hide.opts = TRUE,
                          description = "For each simulation in a given scenario, compare the estimated and true graph via Standardized Hamming Distance")
-opt_parser <- add_argument(opt_parser, arg = "--num-datasets", type = "integer", short = "-d",
+opt_parser <- add_argument(opt_parser, arg = "--num-datasets", type = "integer",
                            help = "Number of datasets to consider in the given scenario")
-opt_parser <- add_argument(opt_parser, arg = "--num-components", short = "-c",
+opt_parser <- add_argument(opt_parser, arg = "--num-components",
                            help = "Value for the number of components, or 'RJ' if the reverisble jump sampler is considered")
-opt_parser <- add_argument(opt_parser, arg = "--rho", short = "-r",
+opt_parser <- add_argument(opt_parser, arg = "--rho",
                            help = "Value of 'rho' parameter, fixed in (0,1)")
 opt_parser <- add_argument(opt_parser, arg = "output-file",
                            help = "Relative path to the output .csv file")
 extra_args <- parse_args(opt_parser)
 
-# Find parent folder of current file and set working directory
-args <- commandArgs()
-basedir <- dirname(sub("--file=", "", args[grep("--file=", args)]))
-basedir <- normalizePath(file.path(getwd(), basedir))
-setwd(dirname(basedir))
-cat(sprintf("Current Directory: %s\n", getwd())) # Log
+
+# Preliminary checks ------------------------------------------------------
+
+# Set working directory relative to the script location
+if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
+  # Running in RStudio
+  setwd(dirname(dirname(rstudioapi::getSourceEditorContext()$path)))
+} else {
+  # Running from command line
+  initial.options <- commandArgs(trailingOnly = FALSE)
+  script.name <- sub("--file=", "", initial.options[grep("--file=", initial.options)])
+  setwd(dirname(dirname(script.name)))
+}
+cat("Setting working directory to: ", getwd(), "\n")
 
 # Check input parameters
 if(is.na(extra_args$num_datasets)) {stop("Input parameter '--num-datasets' not specified")}
@@ -29,13 +39,19 @@ num_datasets <- as.integer(extra_args$num_datasets)
 rho <- extra_args$rho
 H <- extra_args$num_components
 
-# Check if deduced folders exist
+# Deduce input folder
 data_folder <- file.path(getwd(), "input")
-if(!dir.exists(data_folder)){stop(sprintf("'%s' does not exists", data_folder))}
+if(!dir.exists(data_folder)){
+  stop(sprintf("'%s' does not exists", data_folder))
+}
 cat(sprintf("Data Folder: %s\n", data_folder)) # Log
-chain_folder <- file.path(getwd(), "output", sprintf("H_%s",H), sprintf("rho_%s",rho))
-if(!dir.exists(chain_folder)){stop(sprintf("'%s' does not exists", chain_folder))}
-cat(sprintf("Chain Folder: %s\n", chain_folder)) # Log
+
+# Deduce chains folder
+chains_folder <- file.path(getwd(), "output", sprintf("H%s",H), sprintf("rho%s",rho))
+if(!dir.exists(chains_folder)){s
+  top(sprintf("'%s' does not exists", chains_folder))
+}
+cat(sprintf("Chains Folder: %s\n", chains_folder)) # Log
 
 # Check if too many datasets were required
 if(length(list.files(chain_folder)) < num_datasets){
@@ -50,11 +66,12 @@ if(!dir.exists(dirname(out_file))) {
 cat(sprintf("Output directory: %s\n", normalizePath(dirname(out_file)))) # Log
 
 
-# --- End of checks --- #
+# Main code ---------------------------------------------------------------
 
 # Load required packages
 suppressMessages(library("SPMIX"))
 suppressMessages(library("sf"))
+suppressMessages(library("parallel"))
 
 # Function that computes confusion matrix
 confusion_df <- function(G_est, G_true) {
@@ -75,6 +92,25 @@ confusion_df <- function(G_est, G_true) {
            "FP"=out_table[1,2], "FN"=out_table[2,1])
 }
 
+# Function to process a single dataset
+process_dataset <- function(id) {
+  # Load data from file
+  data_file <- file.path(data_folder, sprintf("data_%03d.dat", id))
+  load(data_file)
+  # Load chain from file
+  chain_file <- file.path(chain_folder, sprintf("chain_%03d.dat", id))
+  load(chain_file)
+  # Deserialize chain
+  chains <- sapply(SPMIX_fit, function(x) DeserializeSPMIXProto("spmix.UnivariateState",x))
+  G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
+  # Compute point estimate of posterior boundary graph
+  plinks <- Reduce('+', G_chain)/length(G_chain)
+  Gb_est <- matrix(NA, nrow(plinks), ncol(plinks))
+  Gb_est[Eadj] <- ifelse(plinks[Eadj] < 0.5, 1, 0)
+  # Compute standardized hamming distance
+  return(confusion_df(Gb_est, Gb_true))
+}
+
 # Generate shapefile
 numGroups <- 36
 box <- st_polygon(list(rbind(c(0,0), c(1,0), c(1,1), c(0,1), c(0,0))))
@@ -90,28 +126,18 @@ Ena <- which(W == 0, arr.ind = T)
 Gb_true <- ReadMatrixFromCSV("truth/true_graph.csv")
 Gb_true[Ena] <- NA
 
-# Compute standardized hamming distances for each simulated dataset
-df <- data.frame("TP"=rep(NA,num_datasets), "TN"=rep(NA,num_datasets),
-                 "FP"=rep(NA,num_datasets), "FN"=rep(NA,num_datasets))
-for (n in 1:num_datasets) {
-  # Load data from file
-  data_file <- file.path(data_folder, sprintf("data_%03d.dat", n))
-  load(data_file)
-  # Load chain from file
-  chain_file <- file.path(chain_folder, sprintf("chain_%03d.dat", n))
-  load(chain_file)
-  # Deserialize chain
-  chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
-  G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
-  # Compute point estimate of posterior boundary graph
-  plinks <- Reduce('+', G_chain)/length(G_chain)
-  Gb_est <- matrix(NA, nrow(plinks), ncol(plinks))
-  Gb_est[Eadj] <- ifelse(plinks[Eadj] < 0.5, 1, 0)
-  # Compute standardized hamming distance
-  df[n,] <- confusion_df(Gb_est, Gb_true)
-  cat(sprintf("\rProcessed file: %d / %d", n, num_datasets))
-}
-cat("\n")
+# Process datasets in parallel
+num_cores <- detectCores() - 1
+cat("Processing datasets in parallel using ", num_cores, " cores... ") # Log
+cl <- makeCluster(num_cores)
+clusterExport(cl, c("data_folder", "chain_folder", "Gb_true", "Eadj", "confusion_df", "DeserializeSPMIXProto"))
+results <- parSapply(cl, 1:num_datasets, process_dataset)
+stopCluster(cl)
+cat("Done!\n") # Log
+
+# Convert results to data frame (NON CREDO SIA CORRETTO QUI)
+df <- as.data.frame(t(results))
 
 # Write csv to file 
 write.table(df, file=out_file, sep=",", row.names=F)
+cat(sprintf("Confusion matrices written to: %s\n", normalizePath(out_file))) # Log
