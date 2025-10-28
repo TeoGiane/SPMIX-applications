@@ -19,8 +19,6 @@ package_deps <- c("argparser",
                   "sn",
                   "spdep")
 
-# Install packages from CRAN
-install.packages(package_deps, repos = repos)
-
-# Install SPMIX from GitHub
-devtools::install_github("TeoGiane/SPMIX")
+# Install packages from CRAN (in parallel)
+num_cores <- parallel::detectCores() - 1
+install.packages(package_deps, repos = repos, Ncpus = num_cores)
