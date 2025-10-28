@@ -101,7 +101,7 @@ process_dataset <- function(id) {
   chain_file <- file.path(chains_folder, sprintf("chain_%03d.dat", id))
   load(chain_file)
   # Deserialize chain
-  chains <- sapply(SPMIX_fit, function(x) DeserializeSPMIXProto("spmix.UnivariateState",x))
+  chains <- sapply(SPMIX_fit, function(x) DeserializeSPMIXProto("UnivariateState",x))
   G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
   # Compute point estimate of posterior boundary graph
   plinks <- Reduce('+', G_chain)/length(G_chain)
