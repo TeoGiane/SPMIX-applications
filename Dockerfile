@@ -1,4 +1,4 @@
-# FROM rocker/r-ubuntu:latest
+# Reference image
 FROM python:3.12
 
 # Update packages
@@ -32,6 +32,9 @@ WORKDIR /workdir
 # Install R dependencies
 COPY requirements.R .
 RUN Rscript requirements.R
+
+# Install SPMIX R package from GitHub
+RUN Rscript -e 'devtools::install_github("TeoGiane/SPMIX")'
 
 # Install python dependencies
 COPY requirements.txt .
