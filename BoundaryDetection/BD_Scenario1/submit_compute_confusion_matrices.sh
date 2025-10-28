@@ -23,4 +23,4 @@ export -f in-apptainer
 mkdir -p log
 
 # Execution in containerized environment
-in-apptainer cook exec --jobs 50 simulation_study:compute_confusion_matrices &> log/compute_confusion_matrices.log
+in-apptainer cook exec simulation_study:compute_confusion_matrices &> log/compute_confusion_matrices.log
