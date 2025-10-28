@@ -7,6 +7,7 @@
 *.Rmd
 
 # Folders to ignore
+.old/
 input/
 log/
 output/
