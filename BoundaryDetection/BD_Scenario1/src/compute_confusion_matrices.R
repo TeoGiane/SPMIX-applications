@@ -54,7 +54,7 @@ if(!dir.exists(chains_folder)){s
 cat(sprintf("Chains Folder: %s\n", chains_folder)) # Log
 
 # Check if too many datasets were required
-if(length(list.files(chain_folder)) < num_datasets){
+if(length(list.files(chains_folder)) < num_datasets){
   stop("Number of available chain files are less that required")
 }
 
@@ -98,7 +98,7 @@ process_dataset <- function(id) {
   data_file <- file.path(data_folder, sprintf("data_%03d.dat", id))
   load(data_file)
   # Load chain from file
-  chain_file <- file.path(chain_folder, sprintf("chain_%03d.dat", id))
+  chain_file <- file.path(chains_folder, sprintf("chain_%03d.dat", id))
   load(chain_file)
   # Deserialize chain
   chains <- sapply(SPMIX_fit, function(x) DeserializeSPMIXProto("spmix.UnivariateState",x))
@@ -130,7 +130,7 @@ Gb_true[Ena] <- NA
 num_cores <- detectCores() - 1
 cat("Processing datasets in parallel using ", num_cores, " cores... ") # Log
 cl <- makeCluster(num_cores)
-clusterExport(cl, c("data_folder", "chain_folder", "Gb_true", "Eadj", "confusion_df", "DeserializeSPMIXProto"))
+clusterExport(cl, c("data_folder", "chains_folder", "Gb_true", "Eadj", "confusion_df", "DeserializeSPMIXProto"))
 results <- parSapply(cl, 1:num_datasets, process_dataset)
 stopCluster(cl)
 cat("Done!\n") # Log
