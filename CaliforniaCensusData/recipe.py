@@ -48,8 +48,7 @@ download_data_targets = [
     "raw/psam_p06.csv",
     "raw/ipums_puma_2010_tl20.shp"
 ]
-create_task("download_data", action=download_data,
-            targets=download_data_targets)
+create_task("download_data", action=download_data, targets=download_data_targets)
 
 # Define generate_data task
 num_datasets = 10
