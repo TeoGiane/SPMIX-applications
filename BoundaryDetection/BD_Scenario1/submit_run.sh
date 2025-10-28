@@ -2,11 +2,11 @@
 
 # PBS Settings
 #PBS -S /bin/bash
-#PBS -l select=1:ncpus=64:mem=128gb
+#PBS -l select=1:ncpus=50:mem=128gb
 #PBS -l walltime=48:00:00
-#PBS -N BD_Scenario1-simulation_study
-#PBS -o /u/gianella/log/BD_Scenario1-simulation_study.out
-#PBS -e /u/gianella/log/BD_Scenario1-simulation_study.err
+#PBS -N BD_Scenario1-run
+#PBS -o /u/gianella/log/BD_Scenario1-run.out
+#PBS -e /u/gianella/log/BD_Scenario1-run.err
 
 # Set current working directory
 cd ${PBS_O_WORKDIR}
@@ -23,4 +23,4 @@ export -f in-apptainer
 mkdir -p log
 
 # Execution in containerized environment
-in-apptainer cook exec --jobs 64 simulation_study:run &> log/simulation_study-run.log
+in-apptainer cook exec --jobs 50 simulation_study:run &> log/run.log
