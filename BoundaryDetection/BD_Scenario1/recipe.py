@@ -72,3 +72,22 @@ with create_group("simulation_study:compute_mean_L1_distances") as mean_L1_dista
     for num_components in num_components_values:
         for rho in rho_values:
             create_mean_L1_distances_task(num_datasets, num_components, rho)
+
+# Function to create compute_WAIC task in simulation study (hidden)
+def create_WAIC_task(num_datasets: int, num_components: int | str, rho: float) -> Task:
+    output_file = f"summary/WAIC-H{num_components}-rho{rho}.csv"
+    action = ["Rscript", "src/compute_WAIC.R"] + \
+        ["--num-datasets", num_datasets] + \
+        ["--num-components", num_components] + \
+        ["--rho", rho] + \
+        [output_file]
+    deps = []# [input_file]
+    targets = []# [output_file]
+    return create_task(name = f"_simulation-study:compute-WAIC-H{num_components}-rho{rho}",
+                       action = action, targets = targets, dependencies = deps)
+
+# Create compute_WAIC task group
+with create_group("simulation_study:compute_WAIC") as WAIC_group:
+    for num_components in num_components_values:
+        for rho in rho_values:
+            create_WAIC_task(num_datasets, num_components, rho)
