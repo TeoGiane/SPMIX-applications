@@ -92,7 +92,7 @@ process_dataset <- function(id) {
 num_cores <- min(num_datasets, detectCores() - 1)
 cat("Processing datasets in parallel using", num_cores, "cores... ") # Log
 cl <- makeCluster(num_cores)
-clusterExport(cl, c("data_folder", "chains_folder", "DeserializeSPMIXProto", "ComputePosteriorLPDF"))
+clusterExport(cl, c("data_folder", "chains_folder", "DeserializeSPMIXProto", "ComputePosteriorLPDF", "waic"))
 results <- parSapply(cl, 1:num_datasets, process_dataset)
 df <- data.frame("WAIC" = as.numeric(results))
 stopCluster(cl)
