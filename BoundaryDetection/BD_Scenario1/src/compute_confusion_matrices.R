@@ -127,7 +127,7 @@ Gb_true <- ReadMatrixFromCSV("truth/true_graph.csv")
 Gb_true[Ena] <- NA
 
 # Process datasets in parallel
-num_cores <- detectCores() - 1
+num_cores <- min(num_datasets, detectCores() - 1)
 cat("Processing datasets in parallel using ", num_cores, " cores... ") # Log
 cl <- makeCluster(num_cores)
 clusterExport(cl, c("data_folder", "chains_folder", "Gb_true", "Eadj", "confusion_df", "DeserializeSPMIXProto"))
