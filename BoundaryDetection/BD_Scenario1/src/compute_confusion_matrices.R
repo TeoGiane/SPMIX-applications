@@ -138,6 +138,6 @@ cat("Done!\n") # Log
 # Convert results to data frame (NON CREDO SIA CORRETTO QUI)
 df <- as.data.frame(t(results))
 
-# Write csv to file 
+# Write csv to file
 write.table(df, file=out_file, sep=",", row.names=F)
 cat(sprintf("Confusion matrices written to: %s\n", normalizePath(out_file))) # Log
