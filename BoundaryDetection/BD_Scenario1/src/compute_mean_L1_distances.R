@@ -2,7 +2,7 @@
 
 # Command line input options via argparser
 suppressMessages(library("argparser"))
-opt_parser <- arg_parser(name = "compare_densities", hide.opts = TRUE,
+opt_parser <- arg_parser(name = "compute_mean_L1_distances", hide.opts = TRUE,
                          description = "For each simulation in a given scenario, compare the estimated and true densities via L1 Distance")
 opt_parser <- add_argument(opt_parser, arg = "--num-datasets", type = "integer",
                            help = "Number of datasets to consider in the given scenario")
@@ -104,7 +104,7 @@ true_dens <- ReadMatrixFromCSV("truth/true_densities.csv")
 
 # Compute mean L1 distances in parallel
 num_cores <- min(num_datasets, detectCores() - 1)
-cat("Processing datasets in parallel using ", num_cores, " cores... ") # Log
+cat("Processing datasets in parallel using", num_cores, "cores... ") # Log
 cl <- makeCluster(num_cores)
 clusterExport(cl, c("data_folder", "chains_folder", "x_grid", "true_dens", "numGroups", "L1_distance", "DeserializeSPMIXProto", "ComputeDensities"))
 results <- parSapply(cl, 1:num_datasets, process_dataset)
