@@ -23,4 +23,4 @@ export -f in-apptainer
 mkdir -p log
 
 # Execution in containerized environment
-in-apptainer cook exec --jobs 96 simulation_study:run &> log/simulation_study-run.log
+in-apptainer cook exec --jobs 64 simulation_study:run &> log/simulation_study-run.log
