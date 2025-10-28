@@ -17,8 +17,8 @@ def create_simulation_study_task(dataset_id: str, rho: float, num_components: in
         ["--rho", rho] + \
         ["--output-file", output_file] + \
         [input_file]
-    deps = [input_file]
-    targets = [output_file]
+    deps = []#[input_file]
+    targets = []#[output_file]
     return create_task(name = f"_simulation-study:run-H{num_components}-rho{rho}-replica{dataset_id}",
                        action = action, targets = targets, dependencies = deps)
 
