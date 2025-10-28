@@ -19,7 +19,7 @@ in-apptainer () {
 }
 export -f in-apptainer
 
-# Create log/ directory if it doesn't exists
+# Create log directory if it doesn't exists
 mkdir -p log
 
 # Execution in containerized environment
