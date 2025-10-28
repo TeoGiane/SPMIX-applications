@@ -1,29 +1,44 @@
+# # ---- BOUNDARY DETECTION SCENARIO 1: GENERATE DATA ---- # #
+
 # Command line input options via argparser
 suppressMessages(library("argparser"))
 opt_parser <- arg_parser(name = "generate_data", hide.opts = TRUE,
                          description = "Generate N syntethic datasets for the simulation study")
 opt_parser <- add_argument(opt_parser, arg = "--num-datasets", type = "integer", default = 50,
                            help = "Number of datasets to generate")
+opt_parser <- add_argument(opt_parser, arg = "--dest-dir", type = "character", default = "input",
+                           help = "Directory to save generated datasets")
 extra_args <- parse_args(opt_parser)
 
-# Required libraries
-suppressMessages(library("SPMIX"))
-suppressMessages(library("sf"))
 
-# Find parent folder of current file and set working directory
-args <- commandArgs()
-basedir <- dirname(sub("--file=", "", args[grep("--file=", args)]))
-basedir <- sprintf("%s/%s", getwd(), basedir)
-setwd(basedir)
-cat(sprintf("Current Directory: %s\n", getwd())) # Log
+# Preliminary checks ------------------------------------------------------
+
+# Set working directory relative to the script location
+if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
+  # Running in RStudio
+  setwd(dirname(dirname(rstudioapi::getSourceEditorContext()$path)))
+} else {
+  # Running from command line
+  initial.options <- commandArgs(trailingOnly = FALSE)
+  script.name <- sub("--file=", "", initial.options[grep("--file=", initial.options)])
+  setwd(dirname(dirname(script.name)))
+}
+cat("Setting working directory to: ", getwd(), "\n")
 
 # Create input directory if not present
-datasets_dir <- file.path(getwd(), "input")
+datasets_dir <- file.path(getwd(), extra_args$dest_dir)
 if(!dir.exists(datasets_dir)){
   dir.create(datasets_dir, recursive = TRUE)
 }
 datasets_dir <- normalizePath(datasets_dir)
-cat(sprintf("Datasets Directory: %s\n", datasets_dir))
+cat(sprintf("Destination Directory: %s\n", datasets_dir))
+
+
+# Main code ---------------------------------------------------------------
+
+# Required libraries
+suppressMessages(library("SPMIX"))
+# suppressMessages(library("sf"))
 
 # Required quantities
 numGroups <- 36

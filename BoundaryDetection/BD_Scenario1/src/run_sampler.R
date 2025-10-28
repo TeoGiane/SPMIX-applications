@@ -17,12 +17,17 @@ extra_args <- parse_args(opt_parser)
 
 # Preliminary checks ------------------------------------------------------
 
-# Find parent folder of current file and set working directory
-args <- commandArgs()
-basedir <- dirname(sub("--file=", "", args[grep("--file=", args)]))
-basedir <- normalizePath(file.path(getwd(), basedir))
-setwd(dirname(basedir))
-cat(sprintf("Current Directory: %s\n", getwd())) # Log
+# Set working directory relative to the script location
+if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
+  # Running in RStudio
+  setwd(dirname(dirname(rstudioapi::getSourceEditorContext()$path)))
+} else {
+  # Running from command line
+  initial.options <- commandArgs(trailingOnly = FALSE)
+  script.name <- sub("--file=", "", initial.options[grep("--file=", initial.options)])
+  setwd(dirname(dirname(script.name)))
+}
+cat("Setting working directory to: ", getwd(), "\n")
 
 # Check if input-file exits
 data_file <- file.path(getwd(), extra_args$input_file)
@@ -44,7 +49,6 @@ cat(sprintf("Algorithm Type: %s\n", algo_type)) # Log
 cat(sprintf("N° of Components: %g\n", H)) # Log
 cat(sprintf("rho: %g\n", extra_args$rho)) # Log
 
-
 # Create directory for output if does not exist
 out_file <- file.path(getwd(), extra_args$output_file)
 if(!dir.exists(dirname(out_file))) {
@@ -52,6 +56,8 @@ if(!dir.exists(dirname(out_file))) {
 }
 cat(sprintf("Output directory: %s\n", normalizePath(dirname(out_file)))) # Log
 
+
+# Main code ---------------------------------------------------------------
 
 # Required libraries
 suppressMessages(library("SPMIX"))
@@ -109,7 +115,7 @@ params_template =
 params <- sprintf(params_template, H, extra_args$rho)
 
 # Run Spatial sampler
-out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = algo_type)
-if (exists("out")) {
-  save(out, file = out_file)
+SPMIX_fit <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = algo_type)
+if (exists("SPMIX_fit")) {
+  save(SPMIX_fit, file = out_file)
 }
