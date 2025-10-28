@@ -11,18 +11,16 @@ package_deps <- c("argparser",
                   "ggrepel",
                   "ggridges",
                   "gridExtra",
+                  "metRology",
                   "reshape2",
                   "rjags",
                   "RProtoBuf",
                   "sf",
+                  "sn",
                   "spdep")
 
 # Install packages from CRAN
 install.packages(package_deps, repos = repos)
-
-# Register stadia map API key for ggmap
-ggmap::register_stadiamaps(key = "1f3e613a-2adc-4c22-8bc9-901f1c33e05b",
-                           write = TRUE)
 
 # Install SPMIX from GitHub
 devtools::install_github("TeoGiane/SPMIX")
