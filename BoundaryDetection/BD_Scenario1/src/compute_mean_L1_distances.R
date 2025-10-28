@@ -88,7 +88,7 @@ process_dataset <- function(id) {
   chain_file <- file.path(chains_folder, sprintf("chain_%03d.dat", id))
   load(chain_file)
   # Deserialize chain
-  chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState", x))
+  chains <- sapply(SPMIX_fit, function(x) DeserializeSPMIXProto("UnivariateState", x))
   # Compute point estimate of posterior densities in each area
   est_dens <- ComputeDensities(chains, x_grid, verbose = F)
   # Compute mean L1 distance for this dataset
