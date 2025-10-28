@@ -53,3 +53,22 @@ with create_group("simulation_study:compute_confusion_matrices") as confusion_ma
     for num_components in num_components_values:
         for rho in rho_values:
             create_confusion_matrices_task(num_datasets, num_components, rho)
+
+# Function to create compute_mean_L1_distances task in simulation study (hidden)
+def create_mean_L1_distances_task(num_datasets: int, num_components: int | str, rho: float) -> Task:
+    output_file = f"summary/mean_L1_distances-H{num_components}-rho{rho}.csv"
+    action = ["Rscript", "src/compute_mean_L1_distances.R"] + \
+        ["--num-datasets", num_datasets] + \
+        ["--num-components", num_components] + \
+        ["--rho", rho] + \
+        [output_file]
+    deps = []# [input_file]
+    targets = []# [output_file]
+    return create_task(name = f"_simulation-study:compute-mean-L1-distances-H{num_components}-rho{rho}",
+                       action = action, targets = targets, dependencies = deps)
+
+# Create compute_mean_L1_distances task group
+with create_group("simulation_study:compute_mean_L1_distances") as mean_L1_distances_group:
+    for num_components in num_components_values:
+        for rho in rho_values:
+            create_mean_L1_distances_task(num_datasets, num_components, rho)
