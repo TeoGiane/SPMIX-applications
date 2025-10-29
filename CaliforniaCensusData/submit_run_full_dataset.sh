@@ -16,8 +16,9 @@ mkdir -p log/HRJ/rho0.95/alpha24_beta22/a2_b93/
 
 # Create alias for apptainer execution
 export APPTAINER=/opt/mox/apptainer/bin/apptainer
+export SPMIX=/u/gianella/containers/spmix.sif
 in-apptainer () {
-	$APPTAINER exec --pwd /workdir --bind `pwd`:/workdir spmix.sif $@
+	$APPTAINER exec --pwd /workdir --bind `pwd`:/workdir $SPMIX $@
 }
 export -f in-apptainer
 

@@ -13,8 +13,9 @@ cd ${PBS_O_WORKDIR}
 
 # Create alias for apptainer execution
 export APPTAINER=/opt/mox/apptainer/bin/apptainer
+export SPMIX=/u/gianella/containers/spmix.sif
 in-apptainer () {
-	$APPTAINER exec --pwd /workdir --bind `pwd`:/workdir spmix.sif $@
+	$APPTAINER exec --pwd /workdir --bind `pwd`:/workdir $SPMIX $@
 }
 export -f in-apptainer
 
