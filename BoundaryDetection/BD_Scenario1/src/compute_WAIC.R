@@ -1,3 +1,5 @@
+# # ---- BOUNDARY DETECTION SCENARIO 1: COMPUTE WAIC ---- # #
+
 # Command line input options via argparser
 suppressMessages(library("argparser"))
 opt_parser <- arg_parser(name = "compute_WAIC", hide.opts = TRUE,
