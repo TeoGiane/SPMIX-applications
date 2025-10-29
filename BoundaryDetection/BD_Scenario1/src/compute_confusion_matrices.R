@@ -128,7 +128,7 @@ Gb_true[Ena] <- NA
 
 # Process datasets in parallel
 num_cores <- min(num_datasets, detectCores() - 1)
-cat("Processing datasets in parallel using ", num_cores, " cores... ") # Log
+cat("Processing datasets in parallel using", num_cores, "cores... ") # Log
 cl <- makeCluster(num_cores)
 clusterExport(cl, c("data_folder", "chains_folder", "Gb_true", "Eadj", "confusion_df", "DeserializeSPMIXProto"))
 results <- parSapply(cl, 1:num_datasets, process_dataset)
