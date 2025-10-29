@@ -45,7 +45,7 @@ def create_confusion_matrices_task(num_datasets: int, num_components: int | str,
         [output_file]
     deps = []# [input_file]
     targets = []# [output_file]
-    return create_task(name = f"_simulation-study:compute_confusion-matrices-H{num_components}-rho{rho}",
+    return create_task(name = f"_simulation-study:compute_confusion_matrices-H{num_components}-rho{rho}",
                        action = action, targets = targets, dependencies = deps)
 
 # Create compute_confusion_matrices task group
@@ -64,7 +64,7 @@ def create_mean_L1_distances_task(num_datasets: int, num_components: int | str, 
         [output_file]
     deps = []# ["simulation_study:run"]
     targets = []# [output_file]
-    return create_task(name = f"_simulation-study:compute-mean-L1-distances-H{num_components}-rho{rho}",
+    return create_task(name = f"_simulation-study:compute_mean_L1_distances-H{num_components}-rho{rho}",
                        action = action, targets = targets, task_dependencies = deps)
 
 # Create compute_mean_L1_distances task group
@@ -81,16 +81,35 @@ def create_WAIC_task(num_datasets: int, num_components: int | str, rho: float) -
         ["--num-components", num_components] + \
         ["--rho", rho] + \
         [output_file]
-    deps = [] # [input_file]
+    deps = [] # [simulation_study:run"]
     targets = [] # [output_file]
-    return create_task(name = f"_simulation-study:compute-WAIC-H{num_components}-rho{rho}",
-                       action = action, targets = targets, dependencies = deps)
+    return create_task(name = f"_simulation-study:compute_WAIC-H{num_components}-rho{rho}",
+                       action = action, targets = targets, task_dependencies = deps)
 
 # Create compute_WAIC task group
 with create_group("simulation_study:compute_WAIC") as WAIC_group:
     for num_components in num_components_values:
         for rho in rho_values:
             create_WAIC_task(num_datasets, num_components, rho)
+
+# Function to create compute_roc_curves task in simulation study (hidden)
+def create_roc_curves_task(num_datasets: int, num_components: int | str, rho: float) -> Task:
+    output_file = f"summary/ROC_curves-H{num_components}-rho{rho}.csv"
+    action = ["Rscript", "src/compute_roc_curves.R"] + \
+        ["--num-datasets", num_datasets] + \
+        ["--num-components", num_components] + \
+        ["--rho", rho] + \
+        [output_file]
+    deps = [] # [simulation_study:run"]
+    targets = [] # [output_file]
+    return create_task(name = f"_simulation-study:compute_roc_curves-H{num_components}-rho{rho}",
+                       action = action, targets = targets, task_dependencies = deps)
+
+# Create compute_roc_curves task group
+with create_group("simulation_study:compute_roc_curves") as roc_curves_group:
+    for num_components in num_components_values:
+        for rho in rho_values:
+            create_roc_curves_task(num_datasets, num_components, rho)
 
 # Create generate_tables task
 generate_tables_action = ["Rscript", "src/generate_tables.R"] + \
