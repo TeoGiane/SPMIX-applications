@@ -22,10 +22,10 @@ def create_run_sampler_task(dataset_id: str, rho: float, num_components: int | s
         ["--rho", rho] + \
         ["--output-file", output_file] + \
         [input_file]
-    deps = []# [input_file]
-    targets = []# [output_file]
+    deps = [] # [simulation_study:generate_data"]
+    targets = [] # [output_file]
     return create_task(name = f"_simulation-study:run-H{num_components}-rho{rho}-replica{dataset_id}",
-                       action = action, targets = targets, dependencies = deps)
+                       action = action, targets = targets, task_dependencies = deps)
 
 # Create run_sampler task group
 with create_group("simulation_study:run") as simulation_study_group:
@@ -62,10 +62,10 @@ def create_mean_L1_distances_task(num_datasets: int, num_components: int | str, 
         ["--num-components", num_components] + \
         ["--rho", rho] + \
         [output_file]
-    deps = []# [input_file]
+    deps = []# ["simulation_study:run"]
     targets = []# [output_file]
     return create_task(name = f"_simulation-study:compute-mean-L1-distances-H{num_components}-rho{rho}",
-                       action = action, targets = targets, dependencies = deps)
+                       action = action, targets = targets, task_dependencies = deps)
 
 # Create compute_mean_L1_distances task group
 with create_group("simulation_study:compute_mean_L1_distances") as mean_L1_distances_group:
@@ -81,8 +81,8 @@ def create_WAIC_task(num_datasets: int, num_components: int | str, rho: float) -
         ["--num-components", num_components] + \
         ["--rho", rho] + \
         [output_file]
-    deps = []# [input_file]
-    targets = []# [output_file]
+    deps = [] # [input_file]
+    targets = [] # [output_file]
     return create_task(name = f"_simulation-study:compute-WAIC-H{num_components}-rho{rho}",
                        action = action, targets = targets, dependencies = deps)
 
@@ -91,3 +91,14 @@ with create_group("simulation_study:compute_WAIC") as WAIC_group:
     for num_components in num_components_values:
         for rho in rho_values:
             create_WAIC_task(num_datasets, num_components, rho)
+
+# Create generate_tables task
+generate_tables_action = ["Rscript", "src/generate_tables.R"] + \
+    ['--summary-path', 'summary'] + \
+    ['--num-components-values', ",".join(str(nc) for nc in num_components_values)] + \
+    ['--rho-values', ",".join(str(r) for r in rho_values)] + \
+    ['--output-dir', 'tables']
+generate_tables_deps = [] # ["simulation_study:compute_confusion_matrices","simulation_study:compute_mean_L1_distances","simulation_study:compute_WAIC"]
+generate_tables_targets = []
+create_task("simulation_study:generate_tables",
+            action = generate_tables_action, targets = generate_tables_targets, task_dependencies = generate_tables_deps)
