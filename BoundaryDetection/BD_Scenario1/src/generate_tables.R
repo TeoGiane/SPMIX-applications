@@ -80,6 +80,7 @@ sensitivities <- matrix(NA, nrow = length(H), ncol = length(rho), dimnames = lis
 specificities <- matrix(NA, nrow = length(H), ncol = length(rho), dimnames = list(H,rho))
 meanL1 <- matrix(NA, nrow = length(H), ncol = length(rho), dimnames = list(H,rho))
 meanWAIC <- matrix(NA, nrow = length(H), ncol = length(rho), dimnames = list(H,rho))
+meanAUC <- matrix(NA, nrow = length(H), ncol = length(rho), dimnames = list(H,rho))
 
 # Generate tables
 for (i in 1:length(H)) {
@@ -123,7 +124,17 @@ for (i in 1:length(H)) {
     }
     # Compute mean WAIC
     meanWAIC[i,j] <- sprintf("%g (%g)", round(mean(WAIC_df[,"WAIC"]),1), round(sd(WAIC_df[,"WAIC"]), 1))
-  }
+
+    # Parse ROC curves csv file
+    file_name <- file.path(summary_path, sprintf("ROC_curves-H%s-rho%s.csv", H[i], rho[j]))
+    if(!file.exists(file_name)){
+      stop(sprintf("File '%s' not found", file_name))
+    } else {
+      cat(sprintf("Parsing file: %s\n", file_name)) # Log
+      ROC_df <- read.csv(file_name)
+    }
+    # Compute mean AUC
+    meanAUC[i,j] <- sprintf("%g (%g)", round(mean(ROC_df[,"auc"]),3), round(sd(ROC_df[,"auc"]), 3))
 }
 
 # Save tables
@@ -132,6 +143,7 @@ write.csv(sensitivities, file = file.path(output_dir, "sensitivity_table.csv"), 
 write.csv(specificities, file = file.path(output_dir, "specificity_table.csv"), row.names = TRUE)
 write.csv(meanL1, file = file.path(output_dir, "mean_L1_table.csv"), row.names = TRUE)
 write.csv(meanWAIC, file = file.path(output_dir, "mean_WAIC_table.csv"), row.names = TRUE)
+write.csv(meanAUC, file = file.path(output_dir, "mean_AUC_table.csv"), row.names = TRUE)
 
 # # Table of Elapsed Times --------------------------------------------------
 
