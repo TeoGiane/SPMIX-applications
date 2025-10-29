@@ -135,6 +135,7 @@ for (i in 1:length(H)) {
     }
     # Compute mean AUC
     meanAUC[i,j] <- sprintf("%g (%g)", round(mean(ROC_df[,"auc"]),3), round(sd(ROC_df[,"auc"]), 3))
+  }
 }
 
 # Save tables
