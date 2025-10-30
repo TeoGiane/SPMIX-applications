@@ -34,7 +34,7 @@ COPY requirements.R .
 RUN Rscript requirements.R
 
 # Install SPMIX R package from GitHub
-RUN Rscript -e 'devtools::install_github("TeoGiane/SPMIX")'
+RUN Rscript -e 'devtools::install_github("TeoGiane/SPMIX", ref = "dev")'
 
 # Install python dependencies
 COPY requirements.txt .
