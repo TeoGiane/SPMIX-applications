@@ -10,7 +10,7 @@
 .old/
 input/
 log/
-output/
+output*/
 plot/
-summary/
-tables/
+summary*/
+tables*/
