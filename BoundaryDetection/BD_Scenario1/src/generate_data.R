@@ -62,7 +62,7 @@ for (sim in 1:extra_args$num_datasets) {
   }
   # Save data to file
   if (exists("data")) {
-    filename <- file.path(datasets_dir, sprintf("data_%03d.dat", sim))
+    filename <- file.path(datasets_dir, sprintf("data%03d.dat", sim))
     save(data, file = filename)
   }
 }
