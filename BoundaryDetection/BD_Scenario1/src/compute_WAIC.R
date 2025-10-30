@@ -8,6 +8,8 @@ opt_parser <- add_argument(opt_parser, arg = "--num-datasets", type = "integer",
                            help = "Number of datasets to consider in the given scenario")
 opt_parser <- add_argument(opt_parser, arg = "--num-components", short = "-c",
                            help = "Value for the number of components, or 'RJ' if the reverisble jump sampler is considered")
+opt_parser <- add_argument(opt_parser, arg = "--poisson-rate", default = NULL,
+                           help = "Rate parameter for the shifted Poisson prior on the number of components (used only if --num-components is 'RJ')")
 opt_parser <- add_argument(opt_parser, arg = "--rho", short = "-r",
                            help = "Value of 'rho' parameter, fixed in (0,1)")
 opt_parser <- add_argument(opt_parser, arg = "output-file",
@@ -31,6 +33,9 @@ cat("Setting working directory to: ", getwd(), "\n")
 
 # Check input parameters
 if(is.na(extra_args$num_datasets)) {stop("Input parameter '--num-datasets' not specified")}
+if(extra_args$num_components == "RJ" && is.null(extra_args$poisson_rate)){
+  stop("Please provide a value for --poisson-rate when using RJMCMC")
+}
 if(is.na(extra_args$num_components)) {stop("Input parameter '--num-components' not specified")}
 if(is.na(extra_args$rho)){stop("Input parameter '--rho' not specified")}
 
@@ -38,6 +43,7 @@ if(is.na(extra_args$rho)){stop("Input parameter '--rho' not specified")}
 num_datasets <- as.integer(extra_args$num_datasets)
 rho <- extra_args$rho
 H <- extra_args$num_components
+poisson_rate <- extra_args$poisson_rate
 
 # Deduce input folder
 data_folder <- file.path(getwd(), "input")
@@ -47,6 +53,7 @@ if(!dir.exists(data_folder)){
 cat(sprintf("Data Folder: %s\n", data_folder)) # Log
 
 # Deduce chains folder
+if(H == "RJ") { H <- sprintf("RJ/poisson%s", extra_args$poisson_rate) }
 chains_folder <- file.path(getwd(), "output", sprintf("H%s",H), sprintf("rho%s",rho))
 if(!dir.exists(chains_folder)){
   stop(sprintf("'%s' does not exists", chains_folder))
@@ -54,7 +61,7 @@ if(!dir.exists(chains_folder)){
 cat(sprintf("Chain Folder: %s\n", chains_folder)) # Log
 
 # Check if too many datasets were required
-if(length(list.files(chains_folder)) < num_datasets){
+if(length(list.files(chains_folder)) < num_datasets) {
   stop("Number of available chain files are less that required")
 }
 
@@ -77,13 +84,13 @@ suppressMessages(library("parallel"))
 # Function to process a single dataset
 process_dataset <- function(id) {
   # Load data from file
-  data_file <- file.path(data_folder, sprintf("data_%03d.dat", id))
+  data_file <- file.path(data_folder, sprintf("data%03d.dat", id))
   load(data_file)
   # Load chain from file
-  chain_file <- file.path(chains_folder, sprintf("chain_%03d.dat", id))
+  chain_file <- file.path(chains_folder, sprintf("chain%03d.dat", id))
   load(chain_file)
   # Deserialize chain
-  chains <- sapply(SPMIX_fit, function(x) DeserializeSPMIXProto("UnivariateState",x))
+  chains <- sapply(SPMIX_fit, function(x) DeserializeSPMIXProto("spmix.UnivariateState",x))
   # Compute point estimate of posterior densities in each area
   post_lpdf <- ComputePosteriorLPDF(data, chains, verbose = F)
   # Compute WAIC
