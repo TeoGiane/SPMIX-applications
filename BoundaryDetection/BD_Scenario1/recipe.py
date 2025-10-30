@@ -186,7 +186,8 @@ with create_group("simulation_study:compute_roc_curves") as roc_curves_group:
 # Create generate_tables task
 generate_tables_action = ["Rscript", "src/generate_tables.R"] + \
     ['--summary-path', 'summary'] + \
-    ['--num-components-values', ",".join(str(nc) for nc in num_components_values)] + \
+    ['--num-components-values', ",".join(str(nc) for nc in num_components_values + ['RJ'])] + \
+    ['--poisson-rate-values', ",".join(str(pr) for pr in poisson_rate_values)] + \
     ['--rho-values', ",".join(str(r) for r in rho_values)] + \
     ['--output-dir', 'tables']
 generate_tables_deps = [] # ["simulation_study:compute_confusion_matrices","simulation_study:compute_mean_L1_distances","simulation_study:compute_WAIC"]

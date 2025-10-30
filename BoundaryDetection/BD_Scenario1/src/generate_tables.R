@@ -8,6 +8,8 @@ opt_parser <- add_argument(opt_parser, arg = "--summary-path", type = "character
                            help = "Relative path to the summary folder")
 opt_parser <- add_argument(opt_parser, arg = "--num-components-values", type = "character",
                            help = "Comma-separated values for the number of components considered")
+opt_parser <- add_argument(opt_parser, arg = "--poisson-rate-values", type = "character", default = NULL,
+                           help = "Comma-separated values for the Poisson rate parameter considered (for RJMCMC)")
 opt_parser <- add_argument(opt_parser, arg = "--rho-values", type = "character",
                            help = "Comma-separated values for the rho parameter considered")
 opt_parser <- add_argument(opt_parser, arg = "--output-dir", type = "character",
@@ -69,6 +71,13 @@ cat(sprintf("Output Folder: %s\n", output_dir)) # Log
 
 # Parse H and rho values
 H <- unlist(strsplit(extra_args$num_components_values, split = ","))
+if("RJ" %in% H && is.null(extra_args$poisson_rate_values)){
+  stop("Please provide values for --poisson-rate-values when using RJMCMC")
+}
+if("RJ" %in% H) {
+  poisson_rate_values <- unlist(strsplit(extra_args$poisson_rate_values, split = ","))
+  H <- c(setdiff(H, "RJ"), sapply(poisson_rate_values, function(pr){sprintf("RJ-poisson%s", pr)}))
+}
 rho <- unlist(strsplit(extra_args$rho_values, split = ","))
 
 
