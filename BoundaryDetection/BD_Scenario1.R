@@ -150,7 +150,11 @@ thin = 1
 # Set sampler parameters
 params =
   "
-  num_components: 10
+  num_components {
+    shifted_poisson_prior {
+      rate: 1.0
+    }
+  }
 
   p0_params {
     mu0: 0
@@ -181,10 +185,10 @@ params =
 # Sparse inducing prior --> a = 1, b = (2*I - 2) / 3 -1 (see Paci and Consonni (2020))
 
 # Run Spatial sampler
-out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = "rjmcmc")
-if (exists("out")) {
+SPMIX_fit <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params)
+if (exists("SPMIX_fit")) {
   filename <- sprintf("output/BD_Scenario1_chain_%s.dat", format(Sys.time(), format = "%Y%m%d-%H%M"))
-  save(out, file = filename)
+  save(SPMIX_fit, file = filename)
 }
 
 # Deserialization

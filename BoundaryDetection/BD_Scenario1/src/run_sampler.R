@@ -10,6 +10,8 @@ opt_parser <- add_argument(opt_parser, arg = "--rho", type = "double", default =
                            help = "Value of 'rho' parameter, fixed in (0,1)")
 opt_parser <- add_argument(opt_parser, arg = "--num-components", short = "-c",
                            help = "Value for the number of components, or 'RJ' if the reverisble jump sampler is considered")
+opt_parser <- add_argument(opt_parser, arg = "--poisson-rate", type = "double", default = NULL,
+                           help = "Rate parameter for the shifted Poisson prior on the number of components (used only if --num-components is 'RJ')")
 opt_parser <- add_argument(opt_parser, arg = "--output-file", type = "character", default = "./output/chain.dat",
                            help = "Relative path to the output file")
 extra_args <- parse_args(opt_parser)
@@ -37,16 +39,16 @@ if(!file.exists(data_file)){
 data_file <- normalizePath(data_file)
 cat(sprintf("Data file: %s\n", data_file)) # Log
 
-# Set algo type according to --num-components
+# Set prior on H according to --num-components
 if (extra_args$num_components == "RJ") {
-  algo_type <- "rjmcmc"
-  H <- 10L
+  if (is.null(extra_args$poisson_rate)) {
+    stop("Please provide a value for --poisson-rate when using RJMCMC")
+  }
+  H <- sprintf("{ shifted_poisson_prior { rate: %g } }", extra_args$poisson_rate)
 } else {
-  algo_type <- "no_rjmcmc"
-  H <- as.integer(extra_args$num_components)
+  H <- sprintf("{ fixed: %g }", as.integer(extra_args$num_components))
 }
-cat(sprintf("Algorithm Type: %s\n", algo_type)) # Log
-cat(sprintf("N° of Components: %g\n", H)) # Log
+cat(sprintf("N° of Components: %s\n", H)) # Log
 cat(sprintf("rho: %g\n", extra_args$rho)) # Log
 
 # Create directory for output if does not exist
@@ -76,14 +78,14 @@ adj_list <- spdep::poly2nb(grid, queen = FALSE)
 W <- spdep::nb2mat(adj_list, style = "B")
 
 # Setting MCMC parameters
-burnin = 5000
-niter = 5000
+burnin = 5# 000
+niter = 5# 000
 thin = 1
 
 # Set sampler parameters template
 params_template =
   "
-  num_components: %g
+  num_components %s
 
   p0_params {
     mu0: 0
@@ -115,7 +117,7 @@ params_template =
 params <- sprintf(params_template, H, extra_args$rho)
 
 # Run Spatial sampler
-SPMIX_fit <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = algo_type)
+SPMIX_fit <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params)
 if (exists("SPMIX_fit")) {
   save(SPMIX_fit, file = out_file)
 }
