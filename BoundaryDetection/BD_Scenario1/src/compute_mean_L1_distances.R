@@ -123,3 +123,4 @@ df <- data.frame("MeanL1" = as.numeric(results))
 
 # Write csv to file
 write.table(df, file=out_file, sep=",", row.names=F)
+cat(sprintf("Mean L1 distances saved to: %s\n", normalizePath(out_file))) # Log

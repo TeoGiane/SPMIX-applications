@@ -109,3 +109,4 @@ cat("Done!\n") # Log
 
 # Write csv to file
 write.table(df, file=out_file, sep=",", row.names=F)
+cat(sprintf("WAIC results saved to: %s\n", normalizePath(out_file))) # Log
