@@ -78,8 +78,8 @@ adj_list <- spdep::poly2nb(grid, queen = FALSE)
 W <- spdep::nb2mat(adj_list, style = "B")
 
 # Setting MCMC parameters
-burnin = 5# 000
-niter = 5# 000
+burnin = 5000
+niter = 5000
 thin = 1
 
 # Set sampler parameters template
