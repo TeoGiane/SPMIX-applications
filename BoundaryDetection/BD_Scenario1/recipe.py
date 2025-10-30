@@ -5,14 +5,14 @@ from cook.contexts import create_group
 num_datasets = 50
 ids = [f"{i:03d}" for i in range(1, num_datasets+1)]
 num_components_values = [2, 4, 6, 8, 10] # + "RJ"
-poisson_rate_values = [1.0, 2.0, 5.0, 10.0]
+poisson_rate_values = [1.0]#, 2.0, 5.0, 10.0]
 rho_values = [0, 0.5, 0.9, 0.95, 0.99]
 
 # Define generate_data task
 generate_data_action = ["Rscript", "src/generate_data.R"] + \
     ["--num-datasets", num_datasets] + \
     ["--dest-dir", "input"]
-generate_data_targets = [f"input/data_{i:03d}.dat" for i in range(1, num_datasets+1)]
+generate_data_targets = [f"input/data{i:03d}.dat" for i in range(1, num_datasets+1)]
 create_task("simulation_study:generate_data", action = generate_data_action, targets = generate_data_targets)
 
 # Function to create single run_sampler task in simulation study (hidden)
@@ -52,23 +52,37 @@ with create_group("simulation_study:run") as simulation_study_group:
 
 
 # Function to create compute_confusion_matrices task in simulation study (hidden)
-def create_confusion_matrices_task(num_datasets: int, num_components: int | str, rho: float) -> Task:
-    output_file = f"summary/confusion_matrices-H{num_components}-rho{rho}.csv"
-    action = ["Rscript", "src/compute_confusion_matrices.R"] + \
-        ["--num-datasets", num_datasets] + \
-        ["--num-components", num_components] + \
-        ["--rho", rho] + \
-        [output_file]
-    deps = []# [input_file]
-    targets = []# [output_file]
-    return create_task(name = f"_simulation-study:compute_confusion_matrices-H{num_components}-rho{rho}",
-                       action = action, targets = targets, dependencies = deps)
+def create_confusion_matrices_task(num_datasets: int, num_components: int | str, poisson_rate: float, rho: float) -> Task:
+    if num_components == "RJ":
+        task_name = f"_simulation-study:compute_confusion_matrices-HRJ-poisson{poisson_rate}-rho{rho}"
+        output_file = f"summary/confusion_matrices-HRJ-poisson{poisson_rate}-rho{rho}.csv"
+        action = ["Rscript", "src/compute_confusion_matrices.R"] + \
+            ["--num-datasets", num_datasets] + \
+            ["--num-components", "RJ"] + \
+            ["--poisson-rate", poisson_rate] + \
+            ["--rho", rho] + \
+            [output_file]
+    else:
+        task_name = f"_simulation-study:compute_confusion_matrices-H{num_components}-rho{rho}"
+        output_file = f"summary/confusion_matrices-H{num_components}-rho{rho}.csv"
+        action = ["Rscript", "src/compute_confusion_matrices.R"] + \
+            ["--num-datasets", num_datasets] + \
+            ["--num-components", num_components] + \
+            ["--rho", rho] + \
+            [output_file]
+    deps = [] # [simulation_study:run"]
+    targets = [] # [output_file]
+    return create_task(name = task_name, action = action, targets = targets, task_dependencies = deps)
 
 # Create compute_confusion_matrices task group
 with create_group("simulation_study:compute_confusion_matrices") as confusion_matrices_group:
     for num_components in num_components_values:
         for rho in rho_values:
-            create_confusion_matrices_task(num_datasets, num_components, rho)
+            create_confusion_matrices_task(num_datasets, num_components, None, rho)
+    for poisson_rate in poisson_rate_values:
+        for rho in rho_values:
+            create_confusion_matrices_task(num_datasets, "RJ", poisson_rate, rho)
+
 
 # Function to create compute_mean_L1_distances task in simulation study (hidden)
 def create_mean_L1_distances_task(num_datasets: int, num_components: int | str, rho: float) -> Task:
