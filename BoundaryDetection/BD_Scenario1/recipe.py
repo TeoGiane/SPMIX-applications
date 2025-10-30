@@ -17,7 +17,7 @@ create_task("simulation_study:generate_data", action = generate_data_action, tar
 
 # Function to create single run_sampler task in simulation study (hidden)
 def create_run_sampler_task(dataset_id: str, rho: float, num_components: int | str, poisson_rate: float, output_file: str) -> Task:
-    input_file = f"input/data_{dataset_id}.dat"
+    input_file = f"input/data{dataset_id}.dat"
     if num_components == "RJ":
         task_name = f"_simulation-study:run-HRJ-poisson{poisson_rate}-rho{rho}-replica{dataset_id}"
         action = ["Rscript", "src/run_sampler.R"] + \
