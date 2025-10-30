@@ -4,7 +4,8 @@ from cook.contexts import create_group
 # Define quantities for simulation study
 num_datasets = 50
 ids = [f"{i:03d}" for i in range(1, num_datasets+1)]
-num_components_values = [2, 4, 6, 8, 10, "RJ"]
+num_components_values = [2, 4, 6, 8, 10] # + "RJ"
+poisson_rate_values = [1.0, 2.0, 5.0, 10.0]
 rho_values = [0, 0.5, 0.9, 0.95, 0.99]
 
 # Define generate_data task
@@ -15,25 +16,40 @@ generate_data_targets = [f"input/data_{i:03d}.dat" for i in range(1, num_dataset
 create_task("simulation_study:generate_data", action = generate_data_action, targets = generate_data_targets)
 
 # Function to create single run_sampler task in simulation study (hidden)
-def create_run_sampler_task(dataset_id: str, rho: float, num_components: int | str, output_file: str) -> Task:
+def create_run_sampler_task(dataset_id: str, rho: float, num_components: int | str, poisson_rate: float, output_file: str) -> Task:
     input_file = f"input/data_{dataset_id}.dat"
-    action = ["Rscript", "src/run_sampler.R"] + \
-        ["--num-components", num_components] + \
-        ["--rho", rho] + \
-        ["--output-file", output_file] + \
-        [input_file]
+    if num_components == "RJ":
+        task_name = f"_simulation-study:run-HRJ-poisson{poisson_rate}-rho{rho}-replica{dataset_id}"
+        action = ["Rscript", "src/run_sampler.R"] + \
+            ["--rho", rho] + \
+            ["--num-components", "RJ"] + \
+            ["--poisson-rate", poisson_rate] + \
+            ["--output-file", output_file] + \
+            [input_file]
+    else:
+        task_name = f"_simulation-study:run-H{num_components}-rho{rho}-replica{dataset_id}"  
+        action = ["Rscript", "src/run_sampler.R"] + \
+            ["--rho", rho] + \
+            ["--num-components", num_components] + \
+            ["--output-file", output_file] + \
+            [input_file]
     deps = [] # [simulation_study:generate_data"]
     targets = [] # [output_file]
-    return create_task(name = f"_simulation-study:run-H{num_components}-rho{rho}-replica{dataset_id}",
-                       action = action, targets = targets, task_dependencies = deps)
+    return create_task(name = task_name, action = action, targets = targets, task_dependencies = deps)
 
 # Create run_sampler task group
 with create_group("simulation_study:run") as simulation_study_group:
     for num_components in num_components_values:
         for rho in rho_values:
             for id in ids:
-                output_file = f"output/H{num_components}/rho{rho}/chain_{id}.dat"
-                create_run_sampler_task(id, rho, num_components, output_file)
+                output_file = f"output/H{num_components}/rho{rho}/chain{id}.dat"
+                create_run_sampler_task(id, rho, num_components, None, output_file)
+    for poisson_rate in poisson_rate_values:
+        for rho in rho_values:
+            for id in ids:
+                output_file = f"output/HRJ/poisson{poisson_rate}/rho{rho}/chain{id}.dat"
+                create_run_sampler_task(id, rho, "RJ", poisson_rate, output_file)
+
 
 # Function to create compute_confusion_matrices task in simulation study (hidden)
 def create_confusion_matrices_task(num_datasets: int, num_components: int | str, rho: float) -> Task:
