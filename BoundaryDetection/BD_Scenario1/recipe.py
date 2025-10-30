@@ -151,23 +151,37 @@ with create_group("simulation_study:compute_WAIC") as WAIC_group:
 
 
 # Function to create compute_roc_curves task in simulation study (hidden)
-def create_roc_curves_task(num_datasets: int, num_components: int | str, rho: float) -> Task:
-    output_file = f"summary/ROC_curves-H{num_components}-rho{rho}.csv"
-    action = ["Rscript", "src/compute_roc_curves.R"] + \
-        ["--num-datasets", num_datasets] + \
-        ["--num-components", num_components] + \
-        ["--rho", rho] + \
-        [output_file]
+def create_roc_curves_task(num_datasets: int, num_components: int | str, poisson_rate: float, rho: float) -> Task:
+    if num_components == "RJ":
+        task_name = f"_simulation-study:compute_roc_curves-HRJ-poisson{poisson_rate}-rho{rho}"
+        output_file = f"summary/ROC_curves-HRJ-poisson{poisson_rate}-rho{rho}.csv"
+        action = ["Rscript", "src/compute_roc_curves.R"] + \
+            ["--num-datasets", num_datasets] + \
+            ["--num-components", "RJ"] + \
+            ["--poisson-rate", poisson_rate] + \
+            ["--rho", rho] + \
+            [output_file]
+    else:
+        task_name = f"_simulation-study:compute_roc_curves-H{num_components}-rho{rho}"
+        output_file = f"summary/ROC_curves-H{num_components}-rho{rho}.csv"
+        action = ["Rscript", "src/compute_roc_curves.R"] + \
+            ["--num-datasets", num_datasets] + \
+            ["--num-components", num_components] + \
+            ["--rho", rho] + \
+            [output_file]
     deps = [] # [simulation_study:run"]
     targets = [] # [output_file]
-    return create_task(name = f"_simulation-study:compute_roc_curves-H{num_components}-rho{rho}",
-                       action = action, targets = targets, task_dependencies = deps)
+    return create_task(name = task_name, action = action, targets = targets, task_dependencies = deps)
 
 # Create compute_roc_curves task group
 with create_group("simulation_study:compute_roc_curves") as roc_curves_group:
     for num_components in num_components_values:
         for rho in rho_values:
-            create_roc_curves_task(num_datasets, num_components, rho)
+            create_roc_curves_task(num_datasets, num_components, None, rho)
+    for poisson_rate in poisson_rate_values:
+        for rho in rho_values:
+            create_roc_curves_task(num_datasets, "RJ", poisson_rate, rho)
+
 
 # Create generate_tables task
 generate_tables_action = ["Rscript", "src/generate_tables.R"] + \
