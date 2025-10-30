@@ -4,8 +4,8 @@ from cook.contexts import create_group
 # Define quantities for simulation study
 num_datasets = 50
 ids = [f"{i:03d}" for i in range(1, num_datasets+1)]
-num_components_values = [2, 4, 6, 8, 10] # + "RJ"
-poisson_rate_values = [1.0]#, 2.0, 5.0, 10.0]
+num_components_values = [2, 4, 6, 8, 10] # + ["RJ"]
+poisson_rate_values = [1.0, 2.0, 5.0, 10.0]
 rho_values = [0, 0.5, 0.9, 0.95, 0.99]
 
 # Define generate_data task
