@@ -32,4 +32,4 @@ for SPARSITY in "${SPARSITIES[@]}"; do
 done
 
 # Execution in containerized environment
-parallel -j 0 'in-apptainer cook exec generate_plot &> log/HRJ/rho0.95/alpha24_beta22/p_{1}/generate_plot_fixed_p.log' ::: "${SPARSITIES[@]}"
+parallel -j 0 'in-apptainer cook exec generate_plot_fixed_p_{1} &> log/HRJ/rho0.95/alpha24_beta22/p_{1}/generate_plot_fixed_p.log' ::: "${SPARSITIES[@]}"
