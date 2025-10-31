@@ -11,6 +11,9 @@
 # Set current working directory
 cd ${PBS_O_WORKDIR}
 
+# Create log directory
+mkdir -p log/HRJ/rho0.95/alpha24_beta22/a2_b93/
+
 # Create alias for apptainer execution
 export APPTAINER=/opt/mox/apptainer/bin/apptainer
 export SPMIX=/u/gianella/containers/spmix.sif
@@ -20,4 +23,4 @@ in-apptainer () {
 export -f in-apptainer
 
 # Execution in containerized environment
-in-apptainer cook exec generate_plot &> generate_plot.log
+in-apptainer cook exec generate_plot &> log/HRJ/rho0.95/alpha24_beta22/a2_b93/generate_plot.log

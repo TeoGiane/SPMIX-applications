@@ -86,10 +86,23 @@ for p in p_values:
                 # dependencies=["input/full_dataset.dat"],
                 # targets=run_full_dataset_fixed_p_targets)
 
-# Define generate_plot task
 generate_plot_action = ["Rscript", "src/generate_plot.R",
                         "--data-file", "input/full_dataset.dat",
-                        "--sim-file", "output/H_RJ/rho_0.95/strong_p/full_dataset_chain.dat",
-                        "--output-dir", "plots/H_RJ/rho_0.95/strong_p/full_dataset"]
+                        "--sim-file", "output/HRJ/rho0.95/alpha24_beta22/a2_b93/full_dataset_chain.dat",
+                        "--output-dir", "plots/HRJ/rho0.95/alpha24_beta22/a2_b93/full_dataset"]
 create_task("generate_plot", action=generate_plot_action)#,
+
+for p in p_values:
+    generate_plot_fixed_p_action = ["Rscript", "src/generate_plot.R",
+                                    "--data-file", "input/full_dataset.dat",
+                                    "--sim-file", f"output/HRJ/rho0.95/alpha24_beta22/p_{p}/full_dataset_chain.dat",
+                                    "--output-dir", f"plots/HRJ/rho0.95/alpha24_beta22/p_{p}/full_dataset"]
+    create_task(f"generate_plot_fixed_p_{p}", action=generate_plot_fixed_p_action)
+
+# Define generate_plot task
+# generate_plot_action = ["Rscript", "src/generate_plot.R",
+#                         "--data-file", "input/full_dataset.dat",
+#                         "--sim-file", "output/H_RJ/rho_0.95/strong_p/full_dataset_chain.dat",
+#                         "--output-dir", "plots/H_RJ/rho_0.95/strong_p/full_dataset"]
+# create_task("generate_plot", action=generate_plot_action)#,
             # dependencies=["input/full_dataset.dat", "input/counties-pumas/counties-pumas.shp"])
