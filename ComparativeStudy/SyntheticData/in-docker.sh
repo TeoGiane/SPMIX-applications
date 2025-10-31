@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker run --rm -it -v `pwd`:/workdir spmix $@
+docker run --rm -it -v `pwd`:/workdir spmix:dev $@
