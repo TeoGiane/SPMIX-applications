@@ -72,6 +72,12 @@ create_task("run_full_dataset", action=run_full_dataset_action)#,
             # dependencies=["input/full_dataset.dat"],
             # targets=run_full_dataset_targets)
 
+generate_plot_action = ["Rscript", "src/generate_plot.R",
+                        "--data-file", "input/full_dataset.dat",
+                        "--sim-file", "output/HRJ/rho0.95/alpha24_beta22/a2_b93/full_dataset_chain.dat",
+                        "--output-dir", "plots/HRJ/rho0.95/alpha24_beta22/a2_b93/full_dataset"]
+create_task("generate_plot", action=generate_plot_action)
+
 # Define run_full_dataset_fixed_p tasks
 p_values = [0.1, 0.2, 0.3, 0.4, 0.5]
 for p in p_values:
@@ -85,12 +91,6 @@ for p in p_values:
     create_task(f"run_full_dataset_fixed_p_{p}", action=run_full_dataset_fixed_p_action)#,
                 # dependencies=["input/full_dataset.dat"],
                 # targets=run_full_dataset_fixed_p_targets)
-
-generate_plot_action = ["Rscript", "src/generate_plot.R",
-                        "--data-file", "input/full_dataset.dat",
-                        "--sim-file", "output/HRJ/rho0.95/alpha24_beta22/a2_b93/full_dataset_chain.dat",
-                        "--output-dir", "plots/HRJ/rho0.95/alpha24_beta22/a2_b93/full_dataset"]
-create_task("generate_plot", action=generate_plot_action)#,
 
 for p in p_values:
     generate_plot_fixed_p_action = ["Rscript", "src/generate_plot.R",
