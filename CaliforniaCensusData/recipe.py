@@ -74,8 +74,8 @@ create_task("run_full_dataset", action=run_full_dataset_action)#,
 
 generate_plot_action = ["Rscript", "src/generate_plot.R",
                         "--data-file", "input/full_dataset.dat",
-                        "--sim-file", "output/HRJ/rho0.95/alpha24_beta22/a2_b93/full_dataset_chain.dat",
-                        "--output-dir", "plots/HRJ/rho0.95/alpha24_beta22/a2_b93/full_dataset"]
+                        "--sim-file", "output/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset_chain.dat",
+                        "--output-dir", "plots/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset"]
 create_task("generate_plot", action=generate_plot_action)
 
 # Define run_full_dataset_fixed_p tasks
