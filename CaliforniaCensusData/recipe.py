@@ -1,8 +1,129 @@
 from cook import create_task, Task
-# from cook.contexts import create_group
+from cook.contexts import create_group
 import requests
 import zipfile
 from pathlib import Path
+
+import re
+import os
+from typing import Optional
+
+def _clean_prior_string(prior_str: str, pattern: str) -> str:
+    """
+    Helper function to extract and clean the core part of a prior string.
+
+    This function removes a given pattern (like 'beta_prior { ... }'),
+    replaces whitespace sequences with a single underscore, and removes
+    any resulting ':_' sequences.
+
+    Args:
+        prior_str (str): The input string to clean.
+        pattern (str): The regex pattern for the wrapper to remove.
+
+    Returns:
+        str: The cleaned string.
+    """
+    # Remove the wrapper (e.g., "beta_prior { ... }")
+    cleaned_str = re.sub(pattern, "", prior_str, flags=re.DOTALL)
+    # Replace one or more whitespace characters with a single underscore
+    cleaned_str = re.sub(r'\s+', '_', cleaned_str).strip('_')
+    # Remove the pattern ':_' that can result from the previous step
+    cleaned_str = cleaned_str.replace(":_", "")
+    return cleaned_str
+
+def create_output_path(
+    num_components_prior: Optional[str] = None,
+    p0_prior: Optional[str] = None,
+    rho_prior: Optional[str] = None,
+    sigma_prior: Optional[str] = None,
+    graph_prior: Optional[str] = None,
+) -> str:
+    """
+    Generate an output path given priors in ASCII protocol buffer format.
+
+    Args:
+        num_components_prior (str, optional): Prior on the number of components. Defaults to None.
+        p0_prior (str, optional): Prior on P0. Defaults to None.
+        rho_prior (str, optional): Prior on rho. Defaults to None.
+        sigma_prior (str, optional): Prior on sigma. Defaults to None.
+        graph_prior (str, optional): Prior on the graph. Defaults to None.
+
+    Returns:
+        str: A formatted output path string.
+        
+    Raises:
+        ValueError: If any prior string has an unrecognized format.
+    """
+    out_path_parts = []
+
+    # Prior on number of components
+    if num_components_prior is not None:
+        if "shifted_poisson_prior" in num_components_prior:
+            pattern = r"shifted_poisson_prior\s*\{|\}"
+            cleaned_str = _clean_prior_string(num_components_prior, pattern)
+            out_path_parts.append(f"H-RJ{cleaned_str}")
+        elif "fixed:" in num_components_prior:
+            pattern = r"fixed:\s*"
+            cleaned_str = _clean_prior_string(num_components_prior, pattern)
+            out_path_parts.append(f"H-{cleaned_str}")
+        else:
+            raise ValueError("Wrong format for 'num_components_prior' input.")
+    
+    # Prior on P0
+    if p0_prior is not None:
+        if "p0_params" in p0_prior:
+            pattern = r"p0_params\s*\{|\}"
+            cleaned_str = _clean_prior_string(p0_prior, pattern)
+            out_path_parts.append(f"P0-{cleaned_str}")
+        else:
+            raise ValueError("Wrong format for 'p0_prior' input.")
+
+    # Prior on rho
+    if rho_prior is not None:
+        if "beta_prior" in rho_prior:
+            pattern = r"beta_prior\s*\{|\}"
+            cleaned_str = _clean_prior_string(rho_prior, pattern)
+            out_path_parts.append(f"rho-{cleaned_str}")
+        elif "fixed:" in rho_prior:
+            pattern = r"fixed:\s*"
+            cleaned_str = _clean_prior_string(rho_prior, pattern)
+            out_path_parts.append(f"rho-{cleaned_str}")
+        else:
+            raise ValueError("Wrong format for 'rho_prior' input.")
+
+    # Prior on sigma
+    if sigma_prior is not None:
+        if "inv_wishart_prior" in sigma_prior:
+            pattern = r"inv_wishart_prior\s*\{|\}"
+            cleaned_str = _clean_prior_string(sigma_prior, pattern)
+            out_path_parts.append(f"sigma-{cleaned_str}")
+        elif "inv_gamma_prior" in sigma_prior:
+            pattern = r"inv_gamma_prior\s*\{|\}"
+            cleaned_str = _clean_prior_string(sigma_prior, pattern)
+            out_path_parts.append(f"sigma-{cleaned_str}")
+        elif "fixed:" in sigma_prior:
+            pattern = r"fixed:\s*"
+            cleaned_str = _clean_prior_string(sigma_prior, pattern)
+            out_path_parts.append(f"sigma-{cleaned_str}")
+        else:
+            raise ValueError("Wrong format for 'sigma_prior' input.")
+
+    # Prior on the graph
+    if graph_prior is not None:
+        if "beta_prior" in graph_prior:
+            pattern = r"beta_prior\s*\{|\}"
+            cleaned_str = _clean_prior_string(graph_prior, pattern)
+            out_path_parts.append(f"p-{cleaned_str}")
+        elif "fixed:" in graph_prior:
+            pattern = r"fixed:\s*"
+            cleaned_str = _clean_prior_string(graph_prior, pattern)
+            out_path_parts.append(f"p-{cleaned_str}")
+        else:
+            raise ValueError("Wrong format for 'graph_prior' input.")
+
+    # Join all parts into a single path string
+    return os.path.join(*out_path_parts)
+
 
 def download_and_extract(url, dest_folder):
     """
@@ -62,42 +183,55 @@ generate_data_targets = ["input/counties-pumas/counties-pumas.shp"] + \
 create_task("generate_data", action = generate_data_action, dependencies = download_data_targets, targets = generate_data_targets)
 
 # Define run_full_dataset task
-run_full_dataset_action = ["Rscript", "src/run_sampler.R",
-                           "--num-components", "RJ",
-                           "--rho", 0.95,
-                           "--output-file", "output/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset_chain.dat",
-                           "input/full_dataset.dat"]
-run_full_dataset_targets = ["output/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset_chain.dat"]
-create_task("run_full_dataset", action=run_full_dataset_action)#,
-            # dependencies=["input/full_dataset.dat"],
-            # targets=run_full_dataset_targets)
+num_components_prior = "shifted_poisson_prior { rate: 1.0 }"
+rho_prior = "fixed: 0.95"
+sigma_priors = ["inv_gamma_prior { alpha: 6 beta: 4 }", "fixed: 1.6"]
+graph_prior = "beta_prior { a: 2 b: 93 }"
 
-generate_plot_action = ["Rscript", "src/generate_plot.R",
-                        "--data-file", "input/full_dataset.dat",
-                        "--sim-file", "output/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset_chain.dat",
-                        "--output-dir", "plots/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset"]
-create_task("generate_plot", action=generate_plot_action)
+with create_group("parallel_runs_full_dataset") as parallel_runs_full_dataset_group:
+    for sigma_prior in sigma_priors:
+        output_path = create_output_path(num_components_prior, None, rho_prior, sigma_prior, graph_prior)
+        run_full_dataset_action = ["Rscript", "src/run_sampler_new.R",
+                                   "--num-components-prior", num_components_prior,
+                                   "--rho-prior", rho_prior,
+                                   "--sigma-prior", sigma_prior,
+                                   "--graph-prior", graph_prior,
+                                   "--output-file", f"output/{output_path}/full_dataset_chain.dat",
+                                   "input/full_dataset.dat"]
+        # run_full_dataset_targets = [f"output/{output_path}/full_dataset_chain.dat"]
+        create_task(f"_run_full_dataset-{output_path}", action=run_full_dataset_action)#,
+                    # dependencies=["input/full_dataset.dat"],
+                    # targets=run_full_dataset_targets)
+
+with create_group("parallel_generate_plots") as parallel_generate_plots_group:
+    for sigma_prior in sigma_priors:
+        output_path = create_output_path(num_components_prior, None, rho_prior, sigma_prior, graph_prior)
+        generate_plot_action = ["Rscript", "src/generate_plot.R",
+                                "--data-file", "input/full_dataset.dat",
+                                "--sim-file", f"output/{output_path}/full_dataset_chain.dat",
+                                "--output-dir", f"plots/{output_path}/full_dataset"]
+        create_task(f"_generate_plots-{output_path}", action=generate_plot_action)
 
 # Define run_full_dataset_fixed_p tasks
-p_values = [0.1, 0.2, 0.3, 0.4, 0.5]
-for p in p_values:
-    run_full_dataset_fixed_p_action = ["Rscript", "src/run_sampler_fixed_p.R",
-                                       "--num-components", "RJ",
-                                       "--rho", 0.95,
-                                       "--graph-sparsity", p,
-                                       "--output-file", f"output/HRJ/rho0.95/alpha24_beta22/p_{p}/full_dataset_chain.dat",
-                                       "input/full_dataset.dat"]
-    run_full_dataset_fixed_p_targets = [f"output/HRJ/rho0.95/alpha24_beta22/p_{p}/full_dataset_chain.dat"]
-    create_task(f"run_full_dataset_fixed_p_{p}", action=run_full_dataset_fixed_p_action)#,
+# p_values = [0.1, 0.2, 0.3, 0.4, 0.5]
+# for p in p_values:
+#     run_full_dataset_fixed_p_action = ["Rscript", "src/run_sampler_fixed_p.R",
+#                                        "--num-components", "RJ",
+#                                        "--rho", 0.95,
+#                                        "--graph-sparsity", p,
+#                                        "--output-file", f"output/HRJ/rho0.95/alpha24_beta22/p_{p}/full_dataset_chain.dat",
+#                                        "input/full_dataset.dat"]
+#     run_full_dataset_fixed_p_targets = [f"output/HRJ/rho0.95/alpha24_beta22/p_{p}/full_dataset_chain.dat"]
+#     create_task(f"run_full_dataset_fixed_p_{p}", action=run_full_dataset_fixed_p_action)#,
                 # dependencies=["input/full_dataset.dat"],
                 # targets=run_full_dataset_fixed_p_targets)
 
-for p in p_values:
-    generate_plot_fixed_p_action = ["Rscript", "src/generate_plot.R",
-                                    "--data-file", "input/full_dataset.dat",
-                                    "--sim-file", f"output/HRJ/rho0.95/alpha24_beta22/p_{p}/full_dataset_chain.dat",
-                                    "--output-dir", f"plots/HRJ/rho0.95/alpha24_beta22/p_{p}/full_dataset"]
-    create_task(f"generate_plot_fixed_p_{p}", action=generate_plot_fixed_p_action)
+# for p in p_values:
+#     generate_plot_fixed_p_action = ["Rscript", "src/generate_plot.R",
+#                                     "--data-file", "input/full_dataset.dat",
+#                                     "--sim-file", f"output/HRJ/rho0.95/alpha24_beta22/p_{p}/full_dataset_chain.dat",
+#                                     "--output-dir", f"plots/HRJ/rho0.95/alpha24_beta22/p_{p}/full_dataset"]
+#     create_task(f"generate_plot_fixed_p_{p}", action=generate_plot_fixed_p_action)
 
 # Define generate_plot task
 # generate_plot_action = ["Rscript", "src/generate_plot.R",
