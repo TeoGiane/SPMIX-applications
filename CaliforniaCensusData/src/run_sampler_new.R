@@ -49,22 +49,6 @@ if(!file.exists(adj_file)){
 adj_file <- normalizePath(adj_file)
 cat(sprintf("Adj. Matrix file: %s\n", adj_file)) # Log
 
-# Create output directory from prior specification
-output_dir <- file.path(getwd(), extra_args$output_folder)
-
-
-# # Set algo type according to --num-components
-# if (extra_args$num_components == "RJ") {
-#   if (is.null(extra_args$poisson_rate)) {
-#     stop("Please provide a value for --poisson-rate when using RJMCMC")
-#   }
-#   H <- sprintf("{ shifted_poisson_prior { rate: %g } }", extra_args$poisson_rate)
-# } else {
-#   H <- sprintf("{ fixed: %g }", as.integer(extra_args$num_components))
-# }
-# cat(sprintf("N° of Components: %s\n", H)) # Log
-# cat(sprintf("rho: %g\n", extra_args$rho)) # Log
-
 # Create directory for output if does not exist
 out_file <- file.path(getwd(), extra_args$output_file)
 if(!dir.exists(dirname(out_file))) {
@@ -83,7 +67,7 @@ load(data_file)
 load(adj_file)
 
 # Setting MCMC parameters
-burnin <- 0#30000
+burnin <- 0 #30000
 niter <- 50000
 thin <- 1
 
@@ -115,7 +99,6 @@ params_template =
 
 # Set sampler parameter
 params <- sprintf(params_template, extra_args$num_components_prior, extra_args$rho_prior, extra_args$sigma_prior, extra_args$graph_prior)
-cat(params)
 
 # Run Spatial sampler
 SPMIX_fit <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, optim_options)

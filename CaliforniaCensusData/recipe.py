@@ -188,7 +188,7 @@ rho_prior = "fixed: 0.95"
 sigma_priors = ["inv_gamma_prior { alpha: 6 beta: 4 }", "fixed: 1.6"]
 graph_prior = "beta_prior { a: 2 b: 93 }"
 
-with create_group("parallel_runs_full_dataset") as parallel_runs_full_dataset_group:
+with create_group("parallel_run_full_dataset") as parallel_runs_full_dataset_group:
     for sigma_prior in sigma_priors:
         output_path = create_output_path(num_components_prior, None, rho_prior, sigma_prior, graph_prior)
         run_full_dataset_action = ["Rscript", "src/run_sampler_new.R",
