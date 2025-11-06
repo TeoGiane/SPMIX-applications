@@ -23,5 +23,5 @@ in-apptainer () {
 export -f in-apptainer
 
 # Execution in containerized environment
-in-apptainer cook exec --jobs 2 parallel_generate_plots &> log/parallel_generate_plots.log
+in-apptainer cook exec --jobs 24 parallel_generate_plots &> log/parallel_generate_plots.log
 
