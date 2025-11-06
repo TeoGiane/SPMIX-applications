@@ -185,11 +185,11 @@ create_task("generate_data", action = generate_data_action, dependencies = downl
 # Define run_full_dataset task
 num_components_prior = "shifted_poisson_prior { rate: 1.0 }"
 rho_prior = "fixed: 0.95"
-sigma_priors = ["inv_gamma_prior { alpha: 6 beta: 4 }", "fixed: 1.6"]
-graph_prior = "beta_prior { a: 2 b: 93 }"
+sigma_prior = "inv_gamma_prior { alpha: 6 beta: 4 }"
+graph_priors = ["beta_prior { a: 2 b: 186 }", "fixed: 0.1", "fixed: 0.2", "fixed: 0.3", "fixed: 0.4", "fixed: 0.5"]
 
 with create_group("parallel_run_full_dataset") as parallel_runs_full_dataset_group:
-    for sigma_prior in sigma_priors:
+    for graph_prior in graph_priors:
         output_path = create_output_path(num_components_prior, None, rho_prior, sigma_prior, graph_prior)
         run_full_dataset_action = ["Rscript", "src/run_sampler_new.R",
                                    "--num-components-prior", num_components_prior,
@@ -204,7 +204,7 @@ with create_group("parallel_run_full_dataset") as parallel_runs_full_dataset_gro
                     # targets=run_full_dataset_targets)
 
 with create_group("parallel_generate_plots") as parallel_generate_plots_group:
-    for sigma_prior in sigma_priors:
+    for graph_prior in graph_priors:
         output_path = create_output_path(num_components_prior, None, rho_prior, sigma_prior, graph_prior)
         generate_plot_action = ["Rscript", "src/generate_plot.R",
                                 "--data-file", "input/full_dataset.dat",

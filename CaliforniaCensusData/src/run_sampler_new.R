@@ -75,7 +75,7 @@ optim_options =
   "
   max_iter: 20
   tol: 1e-6
-  jump_every: 20
+  jump_every: 10
   "
 
 # Set sampler parameters template
