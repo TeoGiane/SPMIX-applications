@@ -23,5 +23,5 @@ in-apptainer () {
 export -f in-apptainer
 
 # Execution in containerized environment
-in-apptainer cook exec --jobs 2 parallel_run_full_dataset &> log/parallel_run_full_dataset.log
+in-apptainer cook exec --jobs 24 parallel_run_full_dataset &> log/parallel_run_full_dataset.log
 
