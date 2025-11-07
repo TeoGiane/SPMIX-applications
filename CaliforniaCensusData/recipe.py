@@ -234,9 +234,9 @@ with create_group("parallel_generate_plots") as parallel_generate_plots_group:
 #     create_task(f"generate_plot_fixed_p_{p}", action=generate_plot_fixed_p_action)
 
 # Define generate_plot task
-# generate_plot_action = ["Rscript", "src/generate_plot.R",
-#                         "--data-file", "input/full_dataset.dat",
-#                         "--sim-file", "output/H_RJ/rho_0.95/strong_p/full_dataset_chain.dat",
-#                         "--output-dir", "plots/H_RJ/rho_0.95/strong_p/full_dataset"]
-# create_task("generate_plot", action=generate_plot_action)#,
+generate_plot_action = ["Rscript", "src/generate_plot.R",
+                        "--data-file", "input/full_dataset.dat",
+                        "--sim-file", "output/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset_chain.dat",
+                        "--output-dir", "plots/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset"]
+create_task("generate_plot", action=generate_plot_action)#,
             # dependencies=["input/full_dataset.dat", "input/counties-pumas/counties-pumas.shp"])
