@@ -335,7 +335,9 @@ pdf(file.path(output_dir, "plt_plinks.pdf"), height = 4, width = 4); print(plt_p
 counties_bbox <- unname(st_bbox(st_transform(sf_counties, 4326)))
 counties_map <- sf_ggmap(get_map(counties_bbox, maptype = "stamen_terrain", source = "stadia", crop = F))
 sf_counties_3857 <- st_transform(sf_counties, 3857)
-bound_sf_3857 <- st_transform(bound_sf, 3857)
+if(!all(is.na(Gb))){)
+  bound_sf_3857 <- st_transform(bound_sf, 3857)
+}
 
 # PLOT - Posterior mean heatmap + detected boundaries
 plt_boundaries_mean <- ggmap(counties_map) +
