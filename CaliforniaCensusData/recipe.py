@@ -186,7 +186,7 @@ create_task("generate_data", action = generate_data_action, dependencies = downl
 num_components_prior = "shifted_poisson_prior { rate: 1.0 }"
 rho_prior = "fixed: 0.95"
 sigma_prior = "inv_gamma_prior { alpha: 6 beta: 4 }"
-graph_priors = ["beta_prior { a: 2 b: 186 }", "fixed: 0.1", "fixed: 0.2", "fixed: 0.3", "fixed: 0.4", "fixed: 0.5"]
+graph_priors = ["beta_prior { a: 2 b: 93 }"] # ["beta_prior { a: 2 b: 186 }", "fixed: 0.1", "fixed: 0.2", "fixed: 0.3", "fixed: 0.4", "fixed: 0.5"]
 
 with create_group("parallel_run_full_dataset") as parallel_runs_full_dataset_group:
     for graph_prior in graph_priors:
