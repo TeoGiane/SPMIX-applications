@@ -2,7 +2,7 @@
 
 # Command line input options via argparser
 suppressMessages(library("argparser"))
-opt_parser <- arg_parser(name = "compute_mean_ROC_", hide.opts = TRUE,
+opt_parser <- arg_parser(name = "compute_roc_curves", hide.opts = TRUE,
                          description = "For each simulation in a given scenario, compute the ROC curve for all possible boundary detection thresholds")
 opt_parser <- add_argument(opt_parser, arg = "--num-datasets", type = "integer", short = "-d",
                            help = "Number of datasets to consider in the given scenario")
@@ -95,7 +95,7 @@ Ena <- which(W == 0, arr.ind = T)
 Gb_true <- ReadMatrixFromCSV("truth/true_graph.csv")
 Gb_true[Ena] <- NA
 
-compute_roc_values <- function(true_graph, plinks) {
+compute_roc_object <- function(true_graph, plinks) {
   # Compute posterior probability of a boundary in vector form
   predicted_boundaries <- na.omit(1.0 - plinks[upper.tri(plinks)])
   # Compute actual boundaries in vector form
@@ -117,12 +117,10 @@ process_dataset <- function(id) {
   plinks <- Reduce('+', G_chain)/length(G_chain)
   plinks[Ena] <- NA
   # Compute ROC values and store in proper dataset structure
-  roc_values <- compute_roc_values(Gb_true, plinks)
-  roc_df <- data.frame("threshold" = roc_values$thresholds,
-                       "sensitivity" = roc_values$sensitivities,
-                       "specificity" = roc_values$specificities,
-                       "auc" = rep(roc_values$auc, length(roc_values$thresholds)),
-                       "dataset_id" = rep(id, length(roc_values$thresholds)))
+  roc_obj <- compute_roc_object(Gb_true, plinks)
+  roc_df <- coords(roc_obj, x = seq(0, 1, by = 0.01), ret = c("threshold", "tn", "tp", "fn", "fp"))
+  roc_df$auc <- rep(roc_obj$auc, nrow(roc_df))
+  roc_df$dataset_id <- rep(id, nrow(roc_df))
   return(roc_df)
 }
 
@@ -130,7 +128,7 @@ process_dataset <- function(id) {
 num_cores <- min(num_datasets, detectCores() - 1)
 cat("Processing datasets in parallel using", num_cores, "cores... ") # Log
 cl <- makeCluster(num_cores)
-clusterExport(cl, c("data_folder", "chains_folder", "DeserializeSPMIXProto", "compute_roc_values", "roc", "Gb_true", "Ena"))
+clusterExport(cl, c("data_folder", "chains_folder", "DeserializeSPMIXProto", "compute_roc_object", "roc", "Gb_true", "Ena"))
 results <- parLapply(cl, 1:num_datasets, process_dataset)
 stopCluster(cl)
 cat("Done!\n") # Log
