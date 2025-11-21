@@ -6,6 +6,6 @@
 # Ignored folders
 .old/
 input/
-output/
-plots/
+output*/
+plots*/
 shp/
