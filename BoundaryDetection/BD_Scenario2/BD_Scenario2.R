@@ -64,14 +64,18 @@ for (i in 1:numGroups) {
 }
 
 # Setting MCMC parameters
-burnin = 20000
-niter = 40000
+burnin = 60000
+niter = 20000
 thin = 1
 
 # Set sampler parameters
 params =
   "
-  num_components: 10
+  num_components {
+    shifted_poisson_prior {
+      rate: 1.0
+    }
+  }
 
   p0_params {
     mu0: 0
@@ -102,7 +106,7 @@ params =
 # Sparse inducing prior --> a = 1, b = (2*I - 2) / 3 -1 (see Paci and Consonni (2020))
 
 # Run Spatial sampler
-out <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, type = "rjmcmc")
+SPMIX_fit <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params)
 if (exists("out")) {
   filename <- sprintf("BD_Scenario2_chain_%s.dat", format(Sys.time(), format = "%Y%m%d-%H%M"))
   save(out, file = filename)
@@ -111,9 +115,10 @@ if (exists("out")) {
 # Load chain
 # load("run1/BD_Scenario2_chain_20250913-1705.dat")
 # load("run2/BD_Scenario2_chain_20250922-0130.dat")
+load("output/BD_Scenario2_chain_20250930-0624.dat")
 
 # Deserialization
-chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
+chains <- sapply(SPMIX_fit, function(x) DeserializeSPMIXProto("spmix.UnivariateState",x))
 H_chain <- sapply(chains, function(x) x$num_components)
 G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
 
@@ -134,7 +139,7 @@ sf_grid$post_mean <- apply(post_means, 1, mean)
 sf_grid$post_var <- apply(post_vars, 1, mean)
 
 # Compute estimated density
-estimated_densities <- ComputeDensities(chains, seq(range(data)[1],range(data)[2],length.out=500), verbose = T)
+estimated_densities <- ComputePredictiveLPDFs(SPMIX_fit, seq(range(data)[1],range(data)[2],length.out=500))
 
 # Compute admissible and non-admissible edges
 admissible_edges <- which(W != 0, arr.ind = T)
@@ -178,14 +183,18 @@ plt_traceH <- ggplot(data=df, aes(x=Iteration, y=LowPoints, xend=Iteration, yend
 pdf("plt_traceH.pdf", height = 4, width = 4); print(plt_traceH); dev.off()
 
 # Plot plinks matrix
-df <- reshape2::melt(plinks, c("x", "y"), value.name = "val")
+plinks_df <- reshape2::melt(plinks, c("x", "y"), value.name = "val")
+Gb_df <- reshape2::melt(Gb, c("x", "y"), value.name="Gb") %>% na.omit()
 plt_plinks <- ggplot() +
-  geom_tile(data = df, aes(x=x, y=y, fill=val)) +
+  geom_tile(data = plinks_df, aes(x=x, y=y, fill=val)) +
   geom_rect(aes(xmin=0.5, ymin=0.5, xmax=numGroups+0.5, ymax=numGroups+0.5), col='gray25', fill=NA, linewidth=1) +
   scale_fill_gradient2(low='steelblue', mid = "white", high = 'darkorange', midpoint = 0.5, na.value = 'white',
                        guide = guide_colourbar(title = "Post. Prob. of Inclusion", direction = "horizontal",
                                                barwidth = unit(2.5, "in"), title.position = "bottom", title.hjust = 0.5)) +
   coord_equal() + theme_void() + theme(legend.position = "bottom")
+if(!all(is.na(Gb))){
+  plt_plinks <- plt_plinks + geom_tile(data = Gb_df, aes(x=x,y=y), fill=NA, col='darkred', linewidth=0.5)
+}
 
 # Plot estimated graph
 df <- reshape2::melt(G_est, c("x","y"), value.name = "val")
