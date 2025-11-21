@@ -128,7 +128,7 @@ process_dataset <- function(id) {
 num_cores <- min(num_datasets, detectCores() - 1)
 cat("Processing datasets in parallel using", num_cores, "cores... ") # Log
 cl <- makeCluster(num_cores)
-clusterExport(cl, c("data_folder", "chains_folder", "DeserializeSPMIXProto", "compute_roc_object", "roc", "Gb_true", "Ena"))
+clusterExport(cl, c("data_folder", "chains_folder", "DeserializeSPMIXProto", "compute_roc_object", "roc", "coords", "Gb_true", "Ena"))
 results <- parLapply(cl, 1:num_datasets, process_dataset)
 stopCluster(cl)
 cat("Done!\n") # Log
