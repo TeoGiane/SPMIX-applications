@@ -194,3 +194,15 @@ generate_tables_deps = [] # ["simulation_study:compute_confusion_matrices","simu
 generate_tables_targets = []
 create_task("simulation_study:generate_tables",
             action = generate_tables_action, targets = generate_tables_targets, task_dependencies = generate_tables_deps)
+
+# Create generate_threshold_plot task
+generate_threshold_plot_action = ["Rscript", "src/generate_threshold_plot.R"] + \
+    ['--summary-path', 'summary'] + \
+    ['--num-components-values', ",".join(str(nc) for nc in num_components_values + ['RJ'])] + \
+    ['--poisson-rate-values', ",".join(str(pr) for pr in poisson_rate_values)] + \
+    ['--rho-values', ",".join(str(r) for r in rho_values)] + \
+    ['--output-dir', 'tables']
+generate_threshold_plot_deps = []
+generate_threshold_plot_targets = []
+create_task("simulation_study:generate_threshold_plot",
+            action = generate_threshold_plot_action, targets = generate_threshold_plot_targets, task_dependencies = generate_threshold_plot_deps)
