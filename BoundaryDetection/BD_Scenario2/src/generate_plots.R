@@ -174,7 +174,7 @@ plt_postH <- ggplot(data = df, aes(x=NumComponents, y=Prob.)) +
   theme(plot.title = element_text(face="bold", hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) +
   xlab("N° of Components")
 # Show plot
-pdf("plt_postH.pdf", height = 4, width = 4); print(plt_postH); dev.off()
+pdf(file.path(output_dir, "plt_postH.pdf"), height = 4, width = 4); print(plt_postH); dev.off()
 
 # Posterior of H - Traceplot
 df <- data.frame("Iteration"=1:length(chains), "LowPoints"=H_chain-0.3, "UpPoints"=H_chain+0.3)
@@ -182,7 +182,7 @@ plt_traceH <- ggplot(data=df, aes(x=Iteration, y=LowPoints, xend=Iteration, yend
   ylim(range(df[,-1])) + ylab("N° of Components") + geom_segment(linewidth = 0.1) +
   theme(plot.title = element_text(face="bold", hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
 # Show plot
-pdf("plt_traceH.pdf", height = 4, width = 4); print(plt_traceH); dev.off()
+pdf(file.path(output_dir, "plt_traceH.pdf"), height = 4, width = 4); print(plt_traceH); dev.off()
 
 # Plot plinks matrix
 plinks_df <- reshape2::melt(plinks, c("x", "y"), value.name = "val")
@@ -208,8 +208,8 @@ plt_Gest <- ggplot() +
                                            title.position="bottom", label.position="bottom")) +
   theme_void() + coord_equal() + theme(legend.position = "bottom", legend.text = element_text(colour = "transparent"))
 # Show plots
-pdf("plt_plinks.pdf", height = 4, width = 4); print(plt_plinks); dev.off()
-pdf("plt_Gest.pdf", height = 4, width = 4); print(plt_Gest); dev.off()
+pdf(file.path(output_dir, "plt_plinks.pdf"), height = 4, width = 4); print(plt_plinks); dev.off()
+pdf(file.path(output_dir, "plt_Gest.pdf"), height = 4, width = 4); print(plt_Gest); dev.off()
 # gridExtra::grid.arrange(plt_plinks, plt_Gest, ncol=2)
 
 # Plot boundaries on the grid + group
@@ -221,7 +221,7 @@ plt_boundaries <- ggplot() +
   geom_sf(data = bound_sf, fill=NA, col='darkred', linewidth=1.2) +
   theme_void() + theme(legend.position = "bottom")
 # Show plot
-pdf("plt_boundaries.pdf", height = 4, width = 4); print(plt_boundaries); dev.off()
+pdf(file.path(output_dir, "plt_boundaries.pdf"), height = 4, width = 4); print(plt_boundaries); dev.off()
 # Save
 # pdf("plt_BDgroup.pdf", height = 4, width = 4); plt_boundaries; dev.off()
 
@@ -234,7 +234,7 @@ plt_postmean <- ggplot() +
   geom_sf(data = bound_sf, fill=NA, col='darkred', linewidth=1.2) +
   theme_void() + theme(legend.position = "bottom")
 # Show plot
-pdf("plt_postmean.pdf", height = 4, width = 4); print(plt_postmean); dev.off()
+pdf(file.path(output_dir, "plt_postmean.pdf"), height = 4, width = 4); print(plt_postmean); dev.off()
 # Save
 # pdf("plt_BDpostMean.pdf", height = 4, width = 4); plt_postmean; dev.off()
 
@@ -247,7 +247,7 @@ plt_postvar <- ggplot() +
   geom_sf(data = bound_sf, fill=NA, col='darkred', linewidth=1.2) +
   theme_void() + theme(legend.position = "bottom")
 # Save plot
-pdf("plt_postvar.pdf", height = 4, width = 4); print(plt_postvar); dev.off()
+pdf(file.path(output_dir, "plt_postvar.pdf"), height = 4, width = 4); print(plt_postvar); dev.off()
 
 # Plot - Empirical density histogram in bordering areas
 areas <- c(3,4)
@@ -261,8 +261,8 @@ for (i in 1:length(areas)) {
     xlab("Data") + ylab("Density") + theme(plot.title = element_text(hjust = 0.5))
 }
 # Save plots
-pdf(sprintf("plt_areas%d.pdf", areas[1]), height = 4, width = 4); print(plt_areas[[1]]); dev.off()
-pdf(sprintf("plt_areas%d.pdf", areas[2]), height = 4, width = 4); print(plt_areas[[2]]); dev.off()
+pdf(file.path(output_dir, sprintf("plt_areas%d.pdf", areas[1])), height = 4, width = 4); print(plt_areas[[1]]); dev.off()
+pdf(file.path(output_dir, sprintf("plt_areas%d.pdf", areas[2])), height = 4, width = 4); print(plt_areas[[2]]); dev.off()
 
 # # Plot - Empirical density histogram + Estimated density
 plt_areasdens <- list()
@@ -273,8 +273,8 @@ for (i in 1:length(areas)) {
     ylim(0, 0.55) + theme(plot.title = element_text(hjust = 0.5))
 }
 # Save plots
-pdf(sprintf("plt_areasdens_%d.pdf", areas[1]), height = 4, width = 4); print(plt_areasdens[[1]]); dev.off()
-pdf(sprintf("plt_areasdens_%d.pdf", areas[2]), height = 4, width = 4); print(plt_areasdens[[2]]); dev.off()
+pdf(file.path(output_dir, sprintf("plt_areasdens_%d.pdf", areas[1])), height = 4, width = 4); print(plt_areasdens[[1]]); dev.off()
+pdf(file.path(output_dir, sprintf("plt_areasdens_%d.pdf", areas[2])), height = 4, width = 4); print(plt_areasdens[[2]]); dev.off()
 
 # Plot - Traceplot of p
 p_chain <- sapply(chains, function(x){x$p})
@@ -283,7 +283,7 @@ plt_p_chain <- ggplot() +
   geom_line(data = df, aes(x = Iter, y = Value)) +
   xlab('Iteration') + ylab('p')
 # Save plot
-pdf("plt_p_chain.pdf", height = 4, width = 4); print(plt_p_chain); dev.off()
+pdf(file.path(output_dir, "plt_p_chain.pdf"), height = 4, width = 4); print(plt_p_chain); dev.off()
 
 # Plot - Traceplot of |G|
 Nedge_chain <- sapply(G_chain, function(x){sum(x[upper.tri(x)])})
@@ -292,7 +292,7 @@ plt_Nedge_chain <- ggplot() +
   geom_line(data = df, aes(x = Iter, y = Value)) +
   xlab('Iteration') + ylab('|G|')
 # Save plot
-pdf("plt_Nedge_chain.pdf", height = 4, width = 4); print(plt_Nedge_chain); dev.off()
+pdf(file.path(output_dir, "plt_Nedge_chain.pdf"), height = 4, width = 4); print(plt_Nedge_chain); dev.off()
 
 # Plot - Traceplot of sigma^2
 sigma_chain <- sapply(chains, function(x){x$Sigma$data[1]})
@@ -301,7 +301,7 @@ plt_sigma_chain <- ggplot() +
   geom_line(data = df, aes(x = Iter, y = Value)) +
   xlab('Iteration') + ylab(bquote(sigma^2))
 # Save plot
-pdf("plt_sigma_chain.pdf", height = 4, width = 4); print(plt_sigma_chain); dev.off()
+pdf(file.path(output_dir, "plt_sigma_chain.pdf"), height = 4, width = 4); print(plt_sigma_chain); dev.off()
 
 cat(sprintf("All plots have been generated and saved in: %s\n", output_dir)) # log
 
