@@ -17,7 +17,8 @@ generate_data_action = ["Rscript", "src/generate_data.R"] + \
     ["--num-datasets", num_datasets] + \
     ["--dest-dir", "input"]
 generate_data_targets = [f"input/data{i:03d}.dat" for i in range(1, num_datasets+1)]
-create_task("bd_highdim:generate_data", action = generate_data_action, targets = generate_data_targets)
+create_task("bd_highdim:generate_data", action = generate_data_action,
+            targets = generate_data_targets)
 
 # Define run_sampler tasks
 with create_group("bd_highdim:run_sampler") as run_sampler_group:
@@ -26,7 +27,7 @@ with create_group("bd_highdim:run_sampler") as run_sampler_group:
             [f"input/data{id}.dat"] + \
             ["--output-file", f"output/chain{id}.dat"]
         create_task(f"_bd_highdim:run_sampler-{id}", action=run_sampler_action,
-                    task_dependencies=["bd_highdim:generate_data"],
+                    #task_dependencies=["bd_highdim:generate_data"],
                     targets=[f"output/chain{id}.dat"])
         
 # Define generate_plot tasks
@@ -37,4 +38,5 @@ with create_group("bd_highdim:generate_plots") as generate_plots_group:
             ["--sim-file", f"output/chain{id}.dat"] + \
             ["--output-dir", f"plots/chain{id}"]
         create_task(f"_bd_highdim:generate_plots-{id}", action=generate_plot_action,
-                    task_dependencies=[f"_bd_highdim:run_sampler-{id}"])
+                    # task_dependencies=[f"_bd_highdim:run_sampler-{id}"],
+                    targets=[f"plots/chain{id}/plt_plinks.pdf"])
