@@ -97,20 +97,23 @@ boundary_geometry <- function(boundary_list, sf_geometry) {
 
   # Create empty list
   geom_bdd <- list()
-
+  count <- 1
+  # Populate
   for(i in 1:nrow(sf_geometry)) {
     # Get current area and its boundaries
     if (length(boundary_list[[i]]) > 0) {
-      sel_geom <- sf_geometry[c(i, boundary_list[[i]]), ]
-
-      # Compute geometry of boundary
-      bounds <- suppressWarnings(st_intersection(sel_geom, sel_geom))
-      bounds <- st_geometry(bounds[bounds$id != bounds$id.1, ])
-
-      # Add to list
-      geom_bdd[[i]] <- st_sf(geometry = bounds)
+      for (j in boundary_list[[i]]) {
+        # Compute geometry of boundary
+        sel_geom <- sf_geometry[c(i, j),"id"]
+        bounds <- suppressWarnings(st_intersection(sel_geom, sel_geom))
+        bounds <- st_union(st_geometry(bounds[bounds$id != bounds$id.1, ]))
+        # Add to list
+        geom_bdd[[count]] <- st_sf(geometry = bounds)
+        count <- count + 1
+      }
     }
   }
+  # Bind all objects
   geom_bdd <- do.call(rbind, geom_bdd)
 
   # Drop points if present
@@ -172,7 +175,7 @@ sf_counties$post_var <- apply(post_vars, 1, mean)
 
 # Compute estimated density
 x <- seq(range(data)[1], range(data)[2], length.out = 500)
-estimated_densities <- ComputeDensities(chains, x, verbose = TRUE)
+estimated_densities <- lapply(ComputePredictiveLPDFs(SPMIX_fit, x), exp)
 
 # Compute admissible edges
 Eadj <- which(W == 1, arr.ind = TRUE)
@@ -221,7 +224,7 @@ L1loc <- na.omit(L1loc)
 plt_L1loc <- ggplot() +
   geom_boxplot(data = L1loc, aes(x=Type, y=Dist)) +
   geom_boxplot(data = L1loc, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
-  scale_x_discrete(labels = c(bquote(d[FM^{loc}]), bquote(d[TM^{loc}]))) + labs(x=NULL,y=NULL) +
+  scale_x_discrete(labels = c(bquote(d[hat(BE)[~loc]]), bquote(d[hat(NE)[~loc]]))) + labs(x=NULL,y=NULL) +
   scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
   scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
   theme(text = element_text(size = 14))
@@ -251,7 +254,7 @@ L1glob$Type <- as.factor(L1glob$Type)
 plt_L1glob <- ggplot() +
   geom_boxplot(data = L1glob, aes(x=Type, y=Dist)) +
   geom_boxplot(data = L1glob, aes(x=Type, y=Dist, fill=Type, color=Type), staplewidth = 0.3, alpha = 0.3, show.legend = F) +
-  scale_x_discrete(labels = c(bquote(d[FM]), bquote(d[TM]))) + labs(x=NULL,y=NULL) +
+  scale_x_discrete(labels = c(bquote(d[hat(BE)]), bquote(d[hat(NE)]))) + labs(x=NULL,y=NULL) +
   scale_fill_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
   scale_color_manual(values = c("Neigh"="gray25", "Bound"="darkred")) +
   theme(text = element_text(size = 14))
@@ -277,10 +280,10 @@ pdf(file.path(output_dir, "plt_p_chain.pdf"), height = 4, width = 4); print(plt_
 
 # PLOT - Posterior distribution of H
 df <- as.data.frame(table(H_chain)/length(H_chain)); names(df) <- c("NumComponents", "Prob.")
-plot_postH <- ggplot(data = df, aes(x=NumComponents, y=Prob.)) +
+plt_postH <- ggplot(data = df, aes(x=NumComponents, y=Prob.)) +
   geom_bar(stat="identity", color="steelblue", fill="lightblue") +
   xlab("N° of Components")
-pdf(file.path(output_dir, "plt_postH.pdf"), height = 4, width = 4); print(plot_postH); dev.off()
+pdf(file.path(output_dir, "plt_postH.pdf"), height = 4, width = 4); print(plt_postH); dev.off()
 
 # PLOT - Traceplot of H
 df <- data.frame("Iteration"=1:length(chains), "LowPoints"=H_chain-0.3, "UpPoints"=H_chain+0.3)
@@ -304,7 +307,7 @@ if(!all(is.na(Gb))){
 }
 pdf(file.path(output_dir, "plt_plinks.pdf"), height = 4, width = 4); print(plt_plinks); dev.off()
 
-# # PLOT - Posterior Summary graph
+# PLOT - Posterior Summary graph
 # df <- reshape2::melt(G_sum, c("x","y"), value.name = "Val"); df[which(df$Val == 0), "Val"] <- NA; df$Val <- as.factor(df$Val)
 # # Generate
 # plt_Gsum <- ggplot() +
@@ -385,8 +388,8 @@ plt_emp_var <- ggmap(counties_map) +
 pdf(file.path(output_dir, "plt_emp_var.pdf"), height = 4, width = 4); print(plt_emp_var); dev.off()
 
 # PLOT - Empirical density histogram in bordering areas
-areas <- c(30,46,45);
-areas_names <- c("Hancock Park & Mid-Wilshire", "U.S.C. & Exposition Park", "East Vernon")
+areas <- c(58,60,48)
+areas_names <- c("Gardena,\nLawndale\n& West Athens", "Redondo Beach,\nManhattan Beach\n& Hermosa Beach", "Marina del Rey,\nWestchester\n& Cluver City")
 df_hist <- data.frame("logPINCP"=numeric(0), "PUMA"=numeric(0))
 df_dens <- data.frame("x"=numeric(0), "y"=numeric(0), "PUMA"=numeric(0))
 for (i in 1:length(areas)) {
@@ -401,8 +404,8 @@ for (i in 1:length(areas)) {
 df_hist$PUMA <- factor(df_hist$PUMA, levels = areas_names)
 df_dens$PUMA <- factor(df_dens$PUMA, levels = areas_names)
 plt_DensCompare <- ggplot() +
-  geom_density_ridges(data = df_hist, aes(x=logPINCP, y=PUMA, height=after_stat(ndensity), fill=PUMA, color=PUMA, scale=1.5), stat="binline", bins=10, alpha=0.4, show.legend = F) +
-  geom_ridgeline(data=df_dens, aes(x=x, y=PUMA, height=y, color=PUMA), scale=4.5, fill=NA, linewidth = 1.2, show.legend = F) + #, size=1.2, show.legend = F) +
+  geom_density_ridges(data = df_hist, aes(x=logPINCP, y=PUMA, height=after_stat(density), fill=PUMA, color=PUMA), stat="binline", bins=50, alpha=0.4, show.legend = F) +
+  geom_ridgeline(data=df_dens, aes(x=x, y=PUMA, height=y, color=PUMA), scale=4.5, fill=NA, linewidth = 1.2, show.legend = F) +
   scale_y_discrete(expand = c(0.05,0,1,0)) +
   scale_color_manual(NULL, values = c('darkorange', "steelblue", 'forestgreen')) +
   scale_fill_manual(NULL, values = c('darkorange', "steelblue", 'forestgreen')) +
@@ -411,20 +414,17 @@ pdf(file.path(output_dir, "plt_DensCompare.pdf"), height = 4, width = 4); print(
 
 # PLOT - Zoom on the map
 zoom_bbox <- unname(st_bbox(st_transform(sf_counties[areas,], 4326)))
-xc <- zoom_bbox[1] + .5*(zoom_bbox[3]-zoom_bbox[1])
-yc <- zoom_bbox[2] + .5*(zoom_bbox[4]-zoom_bbox[2])
-zoom_bbox <- c(xc - 0.075, yc - 0.075, xc + 0.075, yc + 0.075)
 zoom_map <- sf_ggmap(get_map(zoom_bbox, maptype = "stamen_terrain", source = "stadia", crop = F))
 names_zoom <- data.frame("PUMA" = areas_names, st_coordinates(st_centroid(st_geometry(sf_counties_3857[areas, ]))))
 names_zoom$PUMA <- factor(names_zoom$PUMA, levels = areas_names)#, levels = c("U.S.C. & Exposition Park", "Hancock Park & Mid-Wilshire", "West Hollywood & Beverly Hills"))
 plt_zoom <- ggmap(zoom_map) +
   geom_sf(data = sf_counties_3857, fill=NA, col='gray25', linewidth=0.7, inherit.aes = F) +
-  geom_sf(data = sf_counties_3857[areas, ], aes(fill=PUMA), col='gray25', alpha = 0.5, linewidth = 1.4, show.legend = F, inherit.aes = F) +
+  geom_sf(data = sf_counties_3857[areas, ], aes(fill=PUMA), col='gray25', alpha = 0.5, linewidth = 0.7, show.legend = F, inherit.aes = F) +
   geom_sf(data = bound_sf_3857, fill=NA, col='darkred', linewidth=1.4, inherit.aes = F) +
-  scale_fill_manual(values = c("03730"='darkorange',"03746"='steelblue',"03745"='forestgreen')) +
+  scale_fill_manual(values = c("03758"='darkorange',"03760"='steelblue',"03748"='forestgreen')) +
   geom_label_repel(data = names_zoom, aes(x=X, y=Y, label=PUMA, color=PUMA), inherit.aes = F, show.legend = F) +
   scale_color_manual(values = c('darkorange', 'steelblue', 'forestgreen')) + theme_void()
-pdf(file.path(output_dir, "plt_zoom.pdf"), height = 4, width = 4); print(plt_zoom); dev.off()
+pdf(file.path(output_dir, "plt_zoom.pdf"), height = 5, width = 5); print(plt_zoom); dev.off()
 
 # Final log
 cat(sprintf("All plots have been generated and saved in %s directory\n", output_dir))

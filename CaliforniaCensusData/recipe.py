@@ -213,19 +213,19 @@ with create_group("generate_plots") as parallel_generate_plots_group:
             for sigma_prior in sigma_priors:
                 for graph_prior in graph_priors:
                     output_path = create_output_path(num_components_prior, None, rho_prior, sigma_prior, graph_prior)
-                    generate_plot_action = ["Rscript", "src/generate_plot.R",
+                    generate_plot_action = ["Rscript", "src/generate_plots.R",
                                             "--data-file", "input/full_dataset.dat",
                                             "--sim-file", f"output-new/{output_path}/full_dataset_chain.dat",
                                             "--output-dir", f"plots-new/{output_path}/full_dataset"]
                     create_task(f"_generate_plots-{output_path}", action=generate_plot_action)
 
 # Define generate_plot task
-generate_plot_action = ["Rscript", "src/generate_plot.R",
-                        "--data-file", "input/full_dataset.dat",
-                        "--sim-file", "dump/output/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset_chain.dat",
-                        "--output-dir", "plots-def/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset"]
-create_task("generate_plot", action=generate_plot_action)#,
-            # dependencies=["input/full_dataset.dat", "input/counties-pumas/counties-pumas.shp"])
+# generate_plot_action = ["Rscript", "src/generate_plots.R",
+#                         "--data-file", "input/full_dataset.dat",
+#                         "--sim-file", "dump/output/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset_chain.dat",
+#                         "--output-dir", "plots-def/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset"]
+# create_task("generate_plot", action=generate_plot_action)#,
+#             # dependencies=["input/full_dataset.dat", "input/counties-pumas/counties-pumas.shp"])
 
 
 # Define generate_explain_boundaries_shapefiles task
