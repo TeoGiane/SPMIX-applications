@@ -5,65 +5,65 @@ library("ggplot2")
 
 # Exempio per BAYSM -------------------------------------------------------
 
-means_given_clus <- function(means_chain, clus_alloc_chain, best_clus) {
-  out <- numeric(length(unique(best_clus)))
-  for (h in unique(best_clus)) {
-    data_idx <- which(best_clus == h)
-    uniq_vals_idx <- as.matrix(clus_alloc_chain[, data_idx])  # Matrix [n_iter x n_data_in_clus]
-    means_by_iter <- matrix(NA, nrow = nrow(clus_alloc_chain), ncol = length(data_idx))
-    for (i in 1:nrow(clus_alloc_chain)){
-      means_by_iter[i, ] <- means_chain[i, uniq_vals_idx[i, ]]
-    }
-    avg_mean_by_iter <- apply(means_by_iter, 1, mean)
-    muhat <- mean(avg_mean_by_iter)
-
-    out[h] <- muhat
-  }
-  return(out)
-}
-
-load("input/data_001.dat")
-# load("../BD_Scenario1/output/H_2/rho_0.95/chain_001.dat")
-load("../BD_Scenario1/output/H_10/rho_0.95/chain_001.dat")
-
-chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
-means_chain <- t(sapply(chains, function(x) {sapply(x$atoms, function(a){a$mean})}))
-clus_alloc_chain1 <- t(sapply(chains, function(x) {x$groupParams[[1]]$cluster_allocs})) + 1L
-clus_alloc_chain2 <- t(sapply(chains, function(x) {x$groupParams[[4]]$cluster_allocs})) + 1L
-best_clus1 <- as.integer(salso::salso(clus_alloc_chain1, loss = "binder"))
-best_clus2 <- as.integer(salso::salso(clus_alloc_chain2, loss = "binder"))
-means1 <- means_given_clus(means_chain, clus_alloc_chain1, best_clus1)
-means2 <- means_given_clus(means_chain, clus_alloc_chain2, best_clus2)
-
-x_grid <- as.numeric(ReadMatrixFromCSV("truth/common_grid.csv"))
-est_dens <- ComputeDensities(chains, x_grid, verbose = T, alpha = 0.05)
-
-# Area 1
-df_hist <- data.frame("x" = data[[1]])
-df_dens <- data.frame("x" = x_grid, "y" = est_dens[[1]]['est', ],
-                      "ymin" = est_dens[[1]]['low', ], "ymax" = est_dens[[1]]['up', ])
-plt_area1 <- ggplot(data = df_hist, aes(x=x, y = after_stat(density))) +
-  geom_histogram(col=NA, fill='white', bins = 20) +
-  geom_histogram(col='steelblue', fill='steelblue', alpha = 0.4, bins = 20) +
-  xlab("Data") + ylab("Density") + theme(plot.title = element_text(hjust = 0.5)) +
-  geom_ribbon(data = df_dens, aes(x=x, ymin=ymin, ymax=ymax), fill='orange', alpha = 0.2, inherit.aes = F) +
-  geom_line(data = df_dens, aes(x=x, y=y), col='darkorange', linewidth=1.2) +
-  geom_point(data = data.frame("x" = means1, "y" = rep(0.001, length(means1))), aes(x=x,y=y), color='forestgreen', size=3, inherit.aes = F) +
-  ylim(c(0,0.6)) + xlab(NULL) + ylab(NULL)
-# Area 2
-df_hist <- data.frame("x" = data[[4]])
-df_dens <- data.frame("x" = x_grid, "y" = est_dens[[4]]['est', ],
-                      "ymin" = est_dens[[4]]['low', ], "ymax" = est_dens[[4]]['up', ])
-plt_area2 <- ggplot(data = df_hist, aes(x=x, y = after_stat(density))) +
-  geom_histogram(col=NA, fill='white', bins = 20) +
-  geom_histogram(col='steelblue', fill='steelblue', alpha = 0.4, bins = 20) +
-  xlab("Data") + ylab("Density") + theme(plot.title = element_text(hjust = 0.5)) +
-  geom_ribbon(data = df_dens, aes(x=x, ymin=ymin, ymax=ymax), fill='orange', alpha = 0.2, inherit.aes = F) +
-  geom_line(data = df_dens, aes(x=x, y=y), col='darkorange', linewidth=1.2) +
-  geom_point(data = data.frame("x" = means2, "y" = rep(0.001, length(means2))), aes(x=x,y=y), color='forestgreen', size=3, inherit.aes = F) +
-  ylim(c(0,0.6)) + xlab(NULL) + ylab(NULL)
-# Show
-x11(height = 4, width = 4); gridExtra::grid.arrange(plt_area1, plt_area2, nrow=2)
+# means_given_clus <- function(means_chain, clus_alloc_chain, best_clus) {
+#   out <- numeric(length(unique(best_clus)))
+#   for (h in unique(best_clus)) {
+#     data_idx <- which(best_clus == h)
+#     uniq_vals_idx <- as.matrix(clus_alloc_chain[, data_idx])  # Matrix [n_iter x n_data_in_clus]
+#     means_by_iter <- matrix(NA, nrow = nrow(clus_alloc_chain), ncol = length(data_idx))
+#     for (i in 1:nrow(clus_alloc_chain)){
+#       means_by_iter[i, ] <- means_chain[i, uniq_vals_idx[i, ]]
+#     }
+#     avg_mean_by_iter <- apply(means_by_iter, 1, mean)
+#     muhat <- mean(avg_mean_by_iter)
+# 
+#     out[h] <- muhat
+#   }
+#   return(out)
+# }
+# 
+# load("input/data_001.dat")
+# # load("../BD_Scenario1/output/H_2/rho_0.95/chain_001.dat")
+# load("../BD_Scenario1/output/H_10/rho_0.95/chain_001.dat")
+# 
+# chains <- sapply(out, function(x) DeserializeSPMIXProto("UnivariateState",x))
+# means_chain <- t(sapply(chains, function(x) {sapply(x$atoms, function(a){a$mean})}))
+# clus_alloc_chain1 <- t(sapply(chains, function(x) {x$groupParams[[1]]$cluster_allocs})) + 1L
+# clus_alloc_chain2 <- t(sapply(chains, function(x) {x$groupParams[[4]]$cluster_allocs})) + 1L
+# best_clus1 <- as.integer(salso::salso(clus_alloc_chain1, loss = "binder"))
+# best_clus2 <- as.integer(salso::salso(clus_alloc_chain2, loss = "binder"))
+# means1 <- means_given_clus(means_chain, clus_alloc_chain1, best_clus1)
+# means2 <- means_given_clus(means_chain, clus_alloc_chain2, best_clus2)
+# 
+# x_grid <- as.numeric(ReadMatrixFromCSV("truth/common_grid.csv"))
+# est_dens <- ComputeDensities(chains, x_grid, verbose = T, alpha = 0.05)
+# 
+# # Area 1
+# df_hist <- data.frame("x" = data[[1]])
+# df_dens <- data.frame("x" = x_grid, "y" = est_dens[[1]]['est', ],
+#                       "ymin" = est_dens[[1]]['low', ], "ymax" = est_dens[[1]]['up', ])
+# plt_area1 <- ggplot(data = df_hist, aes(x=x, y = after_stat(density))) +
+#   geom_histogram(col=NA, fill='white', bins = 20) +
+#   geom_histogram(col='steelblue', fill='steelblue', alpha = 0.4, bins = 20) +
+#   xlab("Data") + ylab("Density") + theme(plot.title = element_text(hjust = 0.5)) +
+#   geom_ribbon(data = df_dens, aes(x=x, ymin=ymin, ymax=ymax), fill='orange', alpha = 0.2, inherit.aes = F) +
+#   geom_line(data = df_dens, aes(x=x, y=y), col='darkorange', linewidth=1.2) +
+#   geom_point(data = data.frame("x" = means1, "y" = rep(0.001, length(means1))), aes(x=x,y=y), color='forestgreen', size=3, inherit.aes = F) +
+#   ylim(c(0,0.6)) + xlab(NULL) + ylab(NULL)
+# # Area 2
+# df_hist <- data.frame("x" = data[[4]])
+# df_dens <- data.frame("x" = x_grid, "y" = est_dens[[4]]['est', ],
+#                       "ymin" = est_dens[[4]]['low', ], "ymax" = est_dens[[4]]['up', ])
+# plt_area2 <- ggplot(data = df_hist, aes(x=x, y = after_stat(density))) +
+#   geom_histogram(col=NA, fill='white', bins = 20) +
+#   geom_histogram(col='steelblue', fill='steelblue', alpha = 0.4, bins = 20) +
+#   xlab("Data") + ylab("Density") + theme(plot.title = element_text(hjust = 0.5)) +
+#   geom_ribbon(data = df_dens, aes(x=x, ymin=ymin, ymax=ymax), fill='orange', alpha = 0.2, inherit.aes = F) +
+#   geom_line(data = df_dens, aes(x=x, y=y), col='darkorange', linewidth=1.2) +
+#   geom_point(data = data.frame("x" = means2, "y" = rep(0.001, length(means2))), aes(x=x,y=y), color='forestgreen', size=3, inherit.aes = F) +
+#   ylim(c(0,0.6)) + xlab(NULL) + ylab(NULL)
+# # Show
+# x11(height = 4, width = 4); gridExtra::grid.arrange(plt_area1, plt_area2, nrow=2)
 
 
 # -------------------------------------------------------------------------
@@ -169,8 +169,8 @@ params =
 
   sigma {
     inv_gamma_prior {
-      alpha: 2
-      beta: 2
+      alpha: 6
+      beta: 4
     }
   }
 
@@ -186,13 +186,13 @@ params =
 
 # Run Spatial sampler
 SPMIX_fit <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params)
-if (exists("SPMIX_fit")) {
-  filename <- sprintf("output/BD_Scenario1_chain_%s.dat", format(Sys.time(), format = "%Y%m%d-%H%M"))
-  save(SPMIX_fit, file = filename)
-}
+# if (exists("SPMIX_fit")) {
+#   filename <- sprintf("output/BD_Scenario1_chain_%s.dat", format(Sys.time(), format = "%Y%m%d-%H%M"))
+#   save(SPMIX_fit, file = filename)
+# }
 
 # Deserialization
-chains <- sapply(out, function(x) DeserializeSPMIXProto("spmix.UnivariateState",x))
+chains <- sapply(SPMIX_fit, function(x) DeserializeSPMIXProto("spmix.UnivariateState",x))
 H_chain <- sapply(chains, function(x) x$num_components)
 G_chain <- lapply(chains, function(x) matrix(x$G$data,x$G$rows,x$G$cols))
 
@@ -213,7 +213,8 @@ sf_grid$post_mean <- apply(post_means, 1, mean)
 sf_grid$post_var <- apply(post_vars, 1, mean)
 
 # Compute estimated density
-estimated_densities <- ComputeDensities(chains, seq(range(data)[1],range(data)[2],length.out=500), verbose = T)
+x_grid <- seq(range(data)[1],range(data)[2],length.out=500)
+estimated_densities <- lapplay(ComputeLogPredictiveDensities(SPMIX_fit, x_grid), exp)
 
 # Compute admissible edges
 admissible_edges <- which(W != 0, arr.ind = T)
@@ -322,8 +323,8 @@ plt_areas <- list()
 for (i in 1:length(areas)) {
   df <- data.frame("x" = data[[areas[i]]])
   plt_areas[[i]] <- ggplot(data = df, aes(x=x, y = after_stat(density))) +
-    geom_histogram(col=NA, fill='white', bins = 10) +
-    geom_histogram(col='steelblue', fill='steelblue', alpha = 0.4, bins = 10) +
+    geom_histogram(col=NA, fill='white', bins = 20) +
+    geom_histogram(col='steelblue', fill='steelblue', alpha = 0.4, bins = 20) +
     xlab("Data") + ylab("Density") + theme(plot.title = element_text(hjust = 0.5))
 }
 # Show plot
@@ -335,12 +336,9 @@ plt_areas[[1]]; plt_areas[[2]]
 # Plot - Empirical density histogram + Estimated density
 plt_areasdens <- list()
 for (i in 1:length(areas)) {
-  df <- data.frame("x" = seq(data_ranges[1,areas[i]], data_ranges[2,areas[i]], length.out = Npoints),
-                   "y" = estimated_densities[[areas[i]]]['est', ],
-                   "ymin" = estimated_densities[[areas[i]]]['low', ],
-                   "ymax" = estimated_densities[[areas[i]]]['up', ])
+  df <- data.frame("x" = x_grid,
+                   "y" = estimated_densities[[areas[i]]])
   plt_areasdens[[i]] <- plt_areas[[i]] +
-    geom_ribbon(data = df, aes(x=x, ymin=ymin, ymax=ymax), fill='orange', alpha = 0.2, inherit.aes = F) +
     geom_line(data = df, aes(x=x, y=y), col='darkorange', linewidth=1.2) +
     ylim(c(0,0.6))
 
