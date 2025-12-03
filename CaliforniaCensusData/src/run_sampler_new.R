@@ -67,16 +67,9 @@ load(data_file)
 load(adj_file)
 
 # Setting MCMC parameters
-burnin <- 0 #30000
-niter <- 50000
+burnin <- 30000
+niter <- 35000
 thin <- 1
-
-optim_options = 
-  "
-  max_iter: 20
-  tol: 1e-6
-  jump_every: 10
-  "
 
 # Set sampler parameters template
 params_template =
@@ -101,7 +94,7 @@ params_template =
 params <- sprintf(params_template, extra_args$num_components_prior, extra_args$rho_prior, extra_args$sigma_prior, extra_args$graph_prior)
 
 # Run Spatial sampler
-SPMIX_fit <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params, optim_options)
+SPMIX_fit <- Sampler.BoundaryDetection(burnin, niter, thin, data, W, params)
 if (exists("SPMIX_fit")) {
   save(SPMIX_fit, file = out_file)
 }
