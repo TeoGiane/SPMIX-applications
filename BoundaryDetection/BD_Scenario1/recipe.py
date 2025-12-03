@@ -196,6 +196,9 @@ create_task("simulation_study:generate_tables",
             action = generate_tables_action, targets = generate_tables_targets, task_dependencies = generate_tables_deps)
 
 # Create generate_threshold_plot task
+num_components_values = [2, 6, 8] # + ["RJ"]
+poisson_rate_values = [1.0, 2.0, 5.0]
+rho_values = [0.9, 0.95, 0.99]
 generate_threshold_plot_action = ["Rscript", "src/generate_threshold_plot.R"] + \
     ['--summary-path', 'summary'] + \
     ['--num-components-values', ",".join(str(nc) for nc in num_components_values + ['RJ'])] + \

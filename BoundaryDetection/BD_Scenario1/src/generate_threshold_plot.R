@@ -1,4 +1,4 @@
-# # ---- BD SCENARIO 1 - GENERATE THRESHOLD PLOTS ---- # #
+# # ---- BD SCENARIO 1 - GENERATE THRESHOLD PLOT ---- # #
 
 # Command line input options via argparser
 suppressMessages(library("argparser"))
@@ -81,7 +81,6 @@ if("RJ" %in% H) {
 rho <- unlist(strsplit(extra_args$rho_values, split = ","))
 
 
-
 # Main code ---------------------------------------------------------------
 
 suppressMessages(library("dplyr"))
@@ -89,6 +88,7 @@ suppressMessages(library("ggplot2"))
 
 # Generate ROC_df
 ROC_df <- list()
+# labels <- list()
 for (i in 1:length(H)) {
   for (j in 1:length(rho)) {
     file_name <- file.path(summary_path, sprintf("ROC_curves-H%s-rho%s.csv", H[i], rho[j]))
@@ -100,13 +100,28 @@ for (i in 1:length(H)) {
         group_by(threshold) %>% 
         mutate("mean_fnr" = mean(fn/(tp+fn)),
                "mean_fpr" = mean(fp/(fp+tn)))
-      tmp_df$model <- rep(sprintf("H = %s, rho = %s",H[i],rho[j]), nrow(tmp_df))
+      tmp_df$H <- rep(H[i], nrow(tmp_df))
+      tmp_df$rho <- rep(rho[j], nrow(tmp_df))
       ROC_df <- append(ROC_df, list(tmp_df))
     }
   }
 }
 ROC_df <- do.call(rbind, ROC_df)
 ROC_df$model <- factor(ROC_df$model, levels = unique(ROC_df$model))
+
+# Custom labeller functions for facet_grid
+H_labeller <- function(label){
+  if (grepl("RJ-poisson", label)) {
+    rate <- sub("RJ-poisson", "", label)
+    return(bquote(H - 1 ~'~'~ Poi(.(rate))))
+  } else {
+    return(bquote(H == .(label)))
+  }
+}
+
+rho_labeller <- function(label){
+  return(bquote(rho == .(label)))
+}
 
 # PLOT - FPR and FNR for all models in facet_wrap
 plt_threshold_facet <- ggplot(data = ROC_df) +
@@ -115,8 +130,8 @@ plt_threshold_facet <- ggplot(data = ROC_df) +
   geom_line(aes(x = threshold, y = fn/(tp+fn), group=dataset_id), color='darkorange1', alpha = 0.3, linetype = 2, linewidth = 0.5) +
   geom_line(aes(x = threshold, y = mean_fnr), color='darkorange4', linewidth=1) +
   geom_vline(xintercept = 0.5, color='darkred', linewidth=1, linetype = 4) +
-  facet_wrap(~model, ncol = 5)
-pdf(file.path(output_dir, "plt_threshold_facet.pdf"), height = 16, width = 16); print(plt_threshold_facet); dev.off()
-
+  facet_grid(H ~ rho, labeller = label_bquote(rows = .(H_labeller(H)), cols = .(rho_labeller(rho)))) + 
+  ylab(NULL) + xlab("cut-off threshold") + theme(text = element_text(size = 8))
+pdf(file.path(output_dir, "plt_threshold_facet.pdf"), height = 6, width = 5); print(plt_threshold_facet); dev.off()
 
 # # ---- END OF SCRIPT ---- # #
