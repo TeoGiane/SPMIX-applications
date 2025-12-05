@@ -119,10 +119,11 @@ query = list("where" = "1=1",
 # Get content as shapefile
 health_insurance_sf_raw <- fetch_arcgis_features(base_url, query)
 
-# Remove empty geometries and transform
+# Remove empty geometries and perform suitable transformations
 health_insurance_sf <- health_insurance_sf_raw %>%
   filter(!st_is_empty(geometry)) %>%
   st_transform(st_crs(st_read("input/counties-pumas/counties-pumas.shp")))
+health_insurance_sf$uninsured_pct[which(is.na(health_insurance_sf$uninsured_pct))] <- 0
 
 # Save output as .dat file
 dir.create("input/explain_boundaries", recursive = T, showWarnings = F)
@@ -130,10 +131,3 @@ save(health_insurance_sf, file = "input/explain_boundaries/health_insurance_sf.d
 
 
 # # ---- END OF SCRIPT ---- #
-
-# counties_sf <- st_read("input/counties-pumas/counties-pumas.shp")
-# Generate plots comes after
-# num_crimes_sf <- st_read("input/counties-pumas/counties-pumas.shp") %>%
-#   mutate(NumCrimes = sapply(st_contains(., crimes_sf), length))
-
-

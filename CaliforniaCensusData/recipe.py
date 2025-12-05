@@ -234,3 +234,11 @@ generate_explain_boundaries_shapefiles_action = ["Rscript", "src/generate_explai
 generate_explain_boundaries_shapefiles_targets = ["input/explain_boundaries/crimes_sf.dat", "input/explain_boundaries/health_insurance_sf.dat"]
 create_task("generate_explain_boundaries_shapefiles", action=generate_explain_boundaries_shapefiles_action,
             targets=generate_explain_boundaries_shapefiles_targets)
+
+# Define genrate_explain_boundaries_plots task
+generate_explain_boundaries_plots_action = ["Rscript", "src/generate_explain_boundaries_plots.R",
+                                            "--input-dir", "input",
+                                            "--sim-file", "output/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset_chain.dat",
+                                            "--output-dir", "plots-def/HRJ/rho0.95/alpha6_beta4/a2_b93/full_dataset"]
+create_task("generate_explain_boundaries_plots", action=generate_explain_boundaries_plots_action,
+            task_dependencies=["generate_explain_boundaries_shapefiles"])
