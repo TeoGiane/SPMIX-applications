@@ -49,6 +49,9 @@ if (!dir.exists(output_dir)) {
   cat("Created output directory: ", output_dir, "\n")
 }
 
+
+# Main code ---------------------------------------------------------------
+
 # Import required packages
 suppressMessages(library("ggplot2"))
 suppressMessages(library("ggridges"))
